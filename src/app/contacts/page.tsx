@@ -211,16 +211,31 @@ export default function ContactsPage() {
       
       const result = await response.json();
       
-      if (response.ok || result.demoMode) {
-        // 成功またはデモモード
-        setOcrResult(result);
-        const contactName = result.contact?.fullName || result.mockData?.fullName || '連絡先';
-        const modeText = result.demoMode ? '（デモモード）' : '';
-        showToast('success', 'OCR完了', `名刺から連絡先を自動登録しました${modeText}: ${contactName}`);
-        setShowOcrModal(false);
-        setOcrFile(null);
-        setOcrResult(null);
-        await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null);
+      if (response.ok) {
+        if (result.ocrEnabled === false) {
+          // OCRが無効の場合、手動入力フォームを表示
+          setEditingContact({
+            fullName: '',
+            email: '',
+            phone: '',
+            company: '',
+            position: '',
+            notes: '',
+            businessCardImage: result.businessCardUrl
+          });
+          setShowEditModal(true);
+          showToast('info', '名刺画像を保存しました', '連絡先情報を入力してください');
+          setShowOcrModal(false);
+          setOcrFile(null);
+        } else if (result.contact) {
+          // OCR成功
+          setOcrResult(result);
+          showToast('success', 'OCR完了', `名刺から連絡先を自動登録しました: ${result.contact.fullName}`);
+          setShowOcrModal(false);
+          setOcrFile(null);
+          setOcrResult(null);
+          await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null);
+        }
       } else {
         throw new Error(result.error || 'OCR処理に失敗しました');
       }

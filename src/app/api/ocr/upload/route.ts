@@ -132,44 +132,21 @@ export async function POST(request: NextRequest) {
     // APIキーのチェック
     const apiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY;
     if (!apiKey || apiKey === "your-google-cloud-api-key") {
-      // デモモードでも画像は保存して、サンプルデータで連絡先を作成
-      const demoCompany = await prisma.company.findUnique({
-        where: { name: "サンプル株式会社" }
-      }) || await prisma.company.create({
-        data: { name: "サンプル株式会社" }
-      });
-      
-      const demoContact = await prisma.contact.create({
-        data: {
-          fullName: "山田太郎（デモ）",
-          email: "yamada.taro@example.com",
-          phone: "090-1234-5678",
-          position: "営業部長",
-          companyId: demoCompany.id,
-          businessCardImage: businessCardUrl, // デモでも名刺画像を保存
-          notes: `デモモード: 名刺OCRで自動登録（${new Date().toLocaleString('ja-JP')}）\n※ Vision APIが未設定のためデモデータです`,
-        },
-        include: {
-          company: true
+      // OCR APIが設定されていない場合は、画像のみ保存して手動入力を促す
+      return NextResponse.json({
+        success: true,
+        businessCardUrl: businessCardUrl,
+        ocrEnabled: false,
+        message: "名刺画像を保存しました。情報を手動で入力してください。",
+        extractedData: {
+          fullName: "",
+          email: "",
+          phone: "",
+          company: "",
+          position: "",
+          businessCardImage: businessCardUrl
         }
       });
-      
-      return NextResponse.json(
-        { 
-          error: "Google Cloud Vision APIが設定されていません（デモモードで登録）",
-          setupInstructions: {
-            step1: "Google Cloudプロジェクトを作成",
-            step2: "Vision APIを有効化",
-            step3: "APIキーを作成: https://console.cloud.google.com/apis/credentials",
-            step4: ".envファイルのGOOGLE_CLOUD_VISION_API_KEYを設定"
-          },
-          demoMode: true,
-          contact: demoContact,
-          businessCardUrl: businessCardUrl,
-          message: "デモモード: 名刺画像は保存され、サンプルデータで連絡先を作成しました"
-        },
-        { status: 200 } // デモモードでも成功として扱う
-      );
     }
 
     // Google Cloud Vision APIクライアントの初期化
