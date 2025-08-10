@@ -147,10 +147,18 @@ export async function GET(request: NextRequest) {
 async function generateAutomaticConnections(contacts: any[]) {
   const connections = [];
 
+  // 現在存在するコンタクトIDのセットを作成
+  const existingContactIds = new Set(contacts.map(c => c.id));
+
   for (let i = 0; i < contacts.length; i++) {
     for (let j = i + 1; j < contacts.length; j++) {
       const contact1 = contacts[i];
       const contact2 = contacts[j];
+
+      // 両方のコンタクトが存在することを確認
+      if (!existingContactIds.has(contact1.id) || !existingContactIds.has(contact2.id)) {
+        continue;
+      }
 
       const strength = NetworkAnalyzer.calculateRelationshipStrength(contact1, contact2);
       
@@ -181,12 +189,38 @@ async function generateAutomaticConnections(contacts: any[]) {
     }
   }
 
-  // バッチでデータベースに挿入
+  // バッチでデータベースに挿入（エラーハンドリングを追加）
   if (connections.length > 0) {
-    await prisma.networkConnection.createMany({
-      data: connections,
-      skipDuplicates: true
-    });
+    try {
+      await prisma.networkConnection.createMany({
+        data: connections
+      });
+    } catch (error) {
+      console.error('Error creating network connections:', error);
+      // 個別に作成を試行（重複チェック付き）
+      for (const connection of connections) {
+        try {
+          // 既存の接続をチェック
+          const existing = await prisma.networkConnection.findFirst({
+            where: {
+              OR: [
+                { fromId: connection.fromId, toId: connection.toId },
+                { fromId: connection.toId, toId: connection.fromId }
+              ]
+            }
+          });
+
+          if (!existing) {
+            await prisma.networkConnection.create({
+              data: connection
+            });
+          }
+        } catch (individualError) {
+          console.error('Failed to create individual connection:', individualError);
+          // 個別のエラーは無視して続行
+        }
+      }
+    }
   }
 }
 

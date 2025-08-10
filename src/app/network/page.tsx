@@ -78,9 +78,13 @@ export default function NetworkPage() {
 
   async function loadNetworkData() {
     try {
+      console.log("Starting network data fetch...");
       const res = await fetch("/api/network/map?maxNodes=100");
+      console.log("Network API response status:", res.status);
+      
       if (!res.ok) throw new Error("Failed to load network data");
       const networkData = await res.json();
+      console.log("Network data received:", networkData);
       
       // データを既存の形式に変換
       const convertedData = {
@@ -114,11 +118,16 @@ export default function NetworkPage() {
         }
       };
       
+      console.log("Converted data:", convertedData);
       setData(convertedData);
+      console.log("Data set successfully");
     } catch (error) {
       console.error("Error loading network data:", error);
+      console.log("Setting data to null due to error");
+      setData(null);
     } finally {
       setLoading(false);
+      console.log("Loading state set to false");
     }
   }
 

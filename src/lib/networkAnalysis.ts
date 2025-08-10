@@ -115,8 +115,8 @@ export class NetworkAnalyzer {
     }
 
     // 6. タグの重複 (最大10点)
-    const tags1 = JSON.parse(contact1.tags || '[]');
-    const tags2 = JSON.parse(contact2.tags || '[]');
+    const tags1 = JSON.parse(contact1.legacyTags || '[]');
+    const tags2 = JSON.parse(contact2.legacyTags || '[]');
     const sharedTags = tags1.filter((tag: string) => tags2.includes(tag));
     strength += Math.min(10, sharedTags.length * 2);
 
