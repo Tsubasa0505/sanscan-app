@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { createWorker } from 'tesseract.js';
+import vision from "@google-cloud/vision";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
     // 画像をBase64に変換とファイル保存
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64Image = buffer.toString("base64");
     
     // 名刺画像を保存するディレクトリを作成
     const uploadDir = path.join(process.cwd(), "public", "uploads");
@@ -136,83 +137,102 @@ export async function POST(request: NextRequest) {
     // 公開URLパス
     const businessCardUrl = `/uploads/${fileName}`;
 
-    // Tesseract.jsでOCR実行
-    console.log('Starting OCR with Tesseract.js...');
-    const worker = await createWorker('jpn+eng');
-    
-    try {
-      const { data: { text } } = await worker.recognize(buffer);
-      console.log('OCR Result:', text);
-      
-      // テキストから情報を抽出
-      const fullName = parseName(text) || "";
-      const email = parseEmail(text) || "";
-      const phone = parsePhone(text) || "";
-      const companyName = parseCompany(text) || "";
-      const position = parsePosition(text) || "";
-      
-      // 会社を作成または取得
-      let company = null;
-      if (companyName) {
-        company = await prisma.company.findUnique({
-          where: { name: companyName }
-        });
-        
-        if (!company) {
-          company = await prisma.company.create({
-            data: { name: companyName }
-          });
-        }
-      }
-      
-      // 連絡先を作成
-      const contact = await prisma.contact.create({
-        data: {
-          fullName: fullName || "名前未設定",
-          email: email || null,
-          phone: phone || null,
-          position: position || null,
-          companyId: company?.id || null,
-          businessCardImage: businessCardUrl,
-          notes: `OCRで自動登録（${new Date().toLocaleString('ja-JP')}）\n元のテキスト:\n${text.substring(0, 500)}`,
-        },
-        include: {
-          company: true
-        }
-      });
-      
-      await worker.terminate();
-      
-      return NextResponse.json({
-        success: true,
-        contact: contact,
-        businessCardUrl: businessCardUrl,
-        ocrEnabled: true,
-        extractedText: text,
-        extractedData: {
-          fullName,
-          email,
-          phone,
-          company: companyName,
-          position
-        },
-        message: `連絡先を自動登録しました: ${fullName || "名前未設定"}`
-      });
-      
-    } catch (ocrError) {
-      console.error('OCR Error:', ocrError);
-      await worker.terminate();
-      
-      // OCRが失敗した場合でも画像は保存
+    // APIキーのチェック
+    const apiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY;
+    if (!apiKey) {
       return NextResponse.json({
         success: false,
         businessCardUrl: businessCardUrl,
         ocrEnabled: false,
-        error: "OCR処理に失敗しました",
-        message: "名刺画像を保存しました。情報を手動で入力してください。"
+        error: "Google Cloud Vision APIキーが設定されていません",
+        message: "名刺画像を保存しました。APIキーを設定してください。"
       });
     }
-    
+
+    // Google Cloud Vision APIクライアントの初期化
+    const client = new vision.ImageAnnotatorClient({
+      apiKey: apiKey
+    });
+
+    // OCR実行
+    console.log('Starting OCR with Google Cloud Vision API...');
+    const [result] = await client.textDetection({
+      image: {
+        content: base64Image
+      },
+      imageContext: {
+        languageHints: ['ja', 'en']
+      }
+    });
+
+    const detections = result.textAnnotations;
+    const text = detections && detections[0] ? detections[0].description : '';
+
+    if (!text) {
+      return NextResponse.json({
+        success: false,
+        businessCardUrl: businessCardUrl,
+        ocrEnabled: true,
+        error: "テキストを検出できませんでした",
+        message: "名刺画像を保存しました。手動で情報を入力してください。"
+      });
+    }
+
+    console.log('OCR Result:', text);
+
+    // テキストから情報を抽出
+    const fullName = parseName(text) || "";
+    const email = parseEmail(text) || "";
+    const phone = parsePhone(text) || "";
+    const companyName = parseCompany(text) || "";
+    const position = parsePosition(text) || "";
+
+    // 会社を作成または取得
+    let company = null;
+    if (companyName) {
+      company = await prisma.company.findUnique({
+        where: { name: companyName }
+      });
+      
+      if (!company) {
+        company = await prisma.company.create({
+          data: { name: companyName }
+        });
+      }
+    }
+
+    // 連絡先を作成
+    const contact = await prisma.contact.create({
+      data: {
+        fullName: fullName || "名前未設定",
+        email: email || null,
+        phone: phone || null,
+        position: position || null,
+        companyId: company?.id || null,
+        businessCardImage: businessCardUrl,
+        notes: `OCRで自動登録（${new Date().toLocaleString('ja-JP')}）\n抽出データ:\n名前: ${fullName}\nメール: ${email}\n電話: ${phone}\n会社: ${companyName}\n役職: ${position}`,
+      },
+      include: {
+        company: true
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      contact: contact,
+      businessCardUrl: businessCardUrl,
+      ocrEnabled: true,
+      extractedText: text,
+      extractedData: {
+        fullName,
+        email,
+        phone,
+        company: companyName,
+        position
+      },
+      message: `連絡先を自動登録しました: ${fullName || "名前未設定"}`
+    });
+
   } catch (error) {
     console.error("Error in OCR upload:", error);
     return NextResponse.json(
