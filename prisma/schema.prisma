@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  domain    String?  @unique
+  contacts  Contact[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  fullName  String
+  email     String?
+  phone     String?
+  position  String?
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+  notes     String?
+  businessCardImage String? // 名刺画像のURL
+  profileImage      String? // 顔写真のURL
+  
+  // 人脈関係のフィールド
+  introducedById String? // 紹介者のID
+  introducedBy   Contact? @relation("Introduction", fields: [introducedById], references: [id])
+  introduced     Contact[] @relation("Introduction")
+  
+  // タグ・重要度
+  legacyTags     String   @default("[]") // JSON配列文字列として保存（後方互換性用）
+  importance     Int      @default(1) // 1-5の重要度スコア
+  lastContactAt  DateTime? // 最後に連絡した日時
+  
+  // 人脈分析用フィールド
+  networkDegree       Int     @default(0) // 直接の繋がり数
+  networkBetweenness  Float   @default(0.0) // 媒介中心性
+  networkCloseness    Float   @default(0.0) // 近接中心性
+  networkPageRank     Float   @default(0.0) // 影響力スコア
+  networkValue        Int     @default(0) // 人脈価値スコア
+  networkLastAnalyzed DateTime? // 最後に分析した日時
+  
+  // リレーション
+  history ContactHistory[]
+  // 人脈関係（送信側）
+  networkConnectionsFrom NetworkConnection[] @relation("ConnectionFrom")
+  // 人脈関係（受信側）
+  networkConnectionsTo   NetworkConnection[] @relation("ConnectionTo")
+  // リマインダー
+  reminders Reminder[]
+  // フォローアップ履歴
+  followUpHistory FollowUpHistory[]
+  // タグ
+  contactTags ContactTag[]
+  // グループ
+  contactGroups ContactGroup[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 連絡履歴テーブル
+model ContactHistory {
+  id        String   @id @default(cuid())
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  type      String   // "email", "phone", "meeting", "other"
+  subject   String?  // 件名・内容
+  notes     String?  // 詳細メモ
+  createdAt DateTime @default(now())
+}
+
+// 人脈接続テーブル（関係の強さを定量化）
+model NetworkConnection {
+  id        String   @id @default(cuid())
+  fromId    String   // 接続元の連絡先ID
+  toId      String   // 接続先の連絡先ID
+  from      Contact  @relation("ConnectionFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to        Contact  @relation("ConnectionTo", fields: [toId], references: [id], onDelete: Cascade)
+  
+  // 関係性の種類
+  type      String   @default("business") // "introduction", "colleague", "business", "social", "family"
+  
+  // 関係の強さ（0-100）
+  strength  Int      @default(0)
+  
+  // 関係性データ
+  sharedProjects    Int @default(0) // 共通プロジェクト数
+  meetingCount      Int @default(0) // 会議回数
+  emailExchanges    Int @default(0) // メール交換回数
+  introductionDate  DateTime? // 紹介日
+  lastInteraction   DateTime? // 最終やり取り日時
+  
+  // メタデータ
+  isActive          Boolean @default(true) // アクティブな関係かどうか
+  confidence        Float   @default(0.0) // 関係性の信頼度（0.0-1.0）
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // 同じ人同士の重複接続を防ぐ
+  @@unique([fromId, toId])
+}
+
+// リマインダーテーブル
+model Reminder {
+  id          String   @id @default(cuid())
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  // リマインダーの種類
+  type        String   // "follow_up", "birthday", "custom", "meeting", "call"
+  title       String   // リマインダーのタイトル
+  description String?  // 詳細説明
+  
+  // 日時設定
+  reminderAt  DateTime // リマインダー日時
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // ステータス
+  isCompleted Boolean  @default(false) // 完了フラグ
+  isActive    Boolean  @default(true)  // 有効フラグ
+  
+  // 繰り返し設定
+  isRecurring   Boolean @default(false) // 繰り返しフラグ
+  recurringType String? // "daily", "weekly", "monthly", "yearly"
+  recurringInterval Int? @default(1) // 間隔（例：2週間おき）
+  
+  // 通知設定
+  notifyBefore  Int?    // 何分前に通知するか
+  isNotified    Boolean @default(false) // 通知済みフラグ
+  
+  // メタデータ
+  priority      String  @default("medium") // "high", "medium", "low"
+  category      String? // カテゴリ（プロジェクト名など）
+}
+
+// フォローアップ履歴テーブル
+model FollowUpHistory {
+  id        String   @id @default(cuid())
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  // フォローアップ情報
+  type      String   // "email", "phone", "meeting", "message", "other"
+  subject   String?  // 件名・目的
+  notes     String?  // 内容・結果
+  result    String?  // 結果（"successful", "no_response", "follow_up_needed"）
+  
+  // 日時
+  followUpAt DateTime // フォローアップした日時
+  createdAt  DateTime @default(now())
+  
+  // 関連情報
+  reminderId String? // 関連するリマインダーID
+  nextFollowUpAt DateTime? // 次回フォローアップ予定日
+}
+
+// タグテーブル
+model Tag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  color       String   @default("#3B82F6") // ヘックスカラーコード
+  description String?
+  
+  // 統計情報
+  contactCount Int @default(0) // このタグを持つ連絡先数
+  isSystem     Boolean @default(false) // システムタグ（削除不可）
+  
+  // リレーション
+  contactTags ContactTag[]
+  groupTags   GroupTag[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// グループテーブル
+model Group {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String   @default("#10B981") // ヘックスカラーコード
+  
+  // グループタイプ
+  type        String   @default("custom") // "custom", "smart", "project", "event"
+  
+  // スマートグループ用条件（JSON形式）
+  conditions  String?  // スマートグループの条件をJSON文字列で保存
+  
+  // 統計情報
+  contactCount Int @default(0)
+  isActive     Boolean @default(true)
+  
+  // リレーション
+  contactGroups ContactGroup[]
+  tags          GroupTag[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 連絡先とタグの中間テーブル
+model ContactTag {
+  id        String   @id @default(cuid())
+  contactId String
+  tagId     String
+  
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  // メタデータ
+  addedAt   DateTime @default(now())
+  addedBy   String?  // 追加したユーザー（将来の機能拡張用）
+  
+  @@unique([contactId, tagId])
+}
+
+// 連絡先とグループの中間テーブル
+model ContactGroup {
+  id        String   @id @default(cuid())
+  contactId String
+  groupId   String
+  
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  // メタデータ
+  addedAt   DateTime @default(now())
+  addedBy   String?  // 追加したユーザー
+  
+  @@unique([contactId, groupId])
+}
+
+// グループとタグの関連テーブル
+model GroupTag {
+  id      String @id @default(cuid())
+  groupId String
+  tagId   String
+  
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  tag     Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, tagId])
+}
