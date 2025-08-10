@@ -31,7 +31,8 @@
       "Bash(powershell:*)",
       "Bash(npm run lint:*)",
       "Bash(cmd /c:*)",
-      "Bash(npm run check:all:*)"
+      "Bash(npm run check:all:*)",
+      "Bash(echo \"Exit code: $?\")"
     ],
     "deny": []
   }

@@ -1,0 +1,23 @@
+services:
+  # Web Service
+  - type: web
+    name: firstapp
+    runtime: node
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: firstapp-db
+          property: connectionString
+      - key: NODE_VERSION
+        value: 20.11.0
+
+databases:
+  # PostgreSQL Database
+  - name: firstapp-db
+    plan: free
+    databaseName: firstapp
+    user: firstapp

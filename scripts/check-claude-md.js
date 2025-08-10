@@ -67,10 +67,11 @@ function checkDirectory(dirPath, pattern, isNegative = false) {
         const filePath = path.join(dir, file);
         const stat = fs.statSync(filePath);
         
-        if (stat.isDirectory() && !file.startsWith('.') && file !== 'node_modules') {
+        if (stat.isDirectory() && !file.startsWith('.') && file !== 'node_modules' && file !== 'generated') {
           walkDir(filePath);
         } else if (stat.isFile() && (file.endsWith('.ts') || file.endsWith('.tsx') || file.endsWith('.js'))) {
-          if (checkFile(filePath, pattern, isNegative)) {
+          // generatedディレクトリ内のファイルは除外
+          if (!filePath.includes('generated') && checkFile(filePath, pattern, isNegative)) {
             found = true;
           }
         }
