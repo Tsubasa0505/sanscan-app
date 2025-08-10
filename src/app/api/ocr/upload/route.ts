@@ -3,6 +3,14 @@ import { PrismaClient } from "@prisma/client";
 import vision from "@google-cloud/vision";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { 
+  parseNameImproved,
+  parseEmailImproved,
+  parsePhoneImproved,
+  parseCompanyImproved,
+  parsePositionImproved,
+  parseBusinessCard 
+} from "@/lib/ocrParser";
 
 const prisma = new PrismaClient();
 
@@ -250,12 +258,13 @@ export async function POST(request: NextRequest) {
       console.log(`Line ${i}: "${line.trim()}"`);
     });
 
-    // テキストから情報を抽出
-    const fullName = parseName(text) || "";
-    const email = parseEmail(text) || "";
-    const phone = parsePhone(text) || "";
-    const companyName = parseCompany(text) || "";
-    const position = parsePosition(text) || "";
+    // 改善された解析関数を使用してテキストから情報を抽出
+    const extractedData = parseBusinessCard(text);
+    const fullName = extractedData.fullName || parseName(text) || "";
+    const email = extractedData.email || parseEmail(text) || "";
+    const phone = extractedData.phone || parsePhone(text) || "";
+    const companyName = extractedData.company || parseCompany(text) || "";
+    const position = extractedData.position || parsePosition(text) || "";
     
     console.log('=== Extracted Data ===');
     console.log('Name:', fullName);

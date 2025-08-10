@@ -34,7 +34,9 @@
       "Bash(npm run check:all:*)",
       "Bash(echo \"Exit code: $?\")",
       "Bash(cat:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(node:*)",
+      "Bash(npm run backup:*)"
     ],
     "deny": []
   }

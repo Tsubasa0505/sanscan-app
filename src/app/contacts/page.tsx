@@ -192,18 +192,27 @@ export default function ContactsPage() {
     }
   };
 
-  // OCR処理
+  // OCR処理（改善版：画面遷移して裏で処理）
   async function processOcr() {
     if (!ocrFile) {
       showToast('warning', 'ファイル未選択', '画像ファイルを選択してください');
       return;
     }
     
+    // すぐにモーダルを閉じて処理中メッセージを表示
+    setShowOcrModal(false);
     setOcrLoading(true);
+    showToast('info', '📸 処理中...', '名刺をOCR処理しています。完了したら自動で一覧に追加されます。');
+    
+    // バックグラウンドで処理を実行
+    const formData = new FormData();
+    formData.append('file', ocrFile);
+    
+    // ファイルをクリア（処理は続行）
+    setOcrFile(null);
+    setOcrResult(null);
+    
     try {
-      const formData = new FormData();
-      formData.append('file', ocrFile);
-      
       const response = await fetch('/api/ocr/upload', {
         method: 'POST',
         body: formData
@@ -214,16 +223,13 @@ export default function ContactsPage() {
       if (response.ok) {
         if (result.contact) {
           // OCR成功 - 自動登録完了
-          showToast('success', 'OCR完了', `名刺から連絡先を自動登録しました: ${result.contact.fullName}`);
-          setShowOcrModal(false);
-          setOcrFile(null);
-          setOcrResult(null);
-          // リストを更新
-          await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null);
+          showToast('success', '✅ OCR完了', `${result.contact.fullName} さんを自動登録しました`);
+          // リストを自動更新（バックグラウンドで）
+          loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null);
         } else if (result.ocrEnabled === false || result.success === false) {
           // OCRが失敗した場合、手動入力フォームを表示
           setEditForm({
-            id: '',  // 新規作成時は空
+            id: '',
             fullName: '',
             email: '',
             phone: '',
@@ -234,15 +240,13 @@ export default function ContactsPage() {
             profileImage: ''
           });
           setShowEditModal(true);
-          showToast('info', '名刺画像を保存しました', 'OCRが失敗したため、手動で情報を入力してください');
-          setShowOcrModal(false);
-          setOcrFile(null);
+          showToast('warning', '⚠️ 手動入力が必要', '文字を認識できませんでした。情報を手動で入力してください。');
         }
       } else {
         throw new Error(result.error || 'OCR処理に失敗しました');
       }
     } catch (error) {
-      showToast('error', 'OCRエラー', error instanceof Error ? error.message : String(error));
+      showToast('error', '❌ OCRエラー', error instanceof Error ? error.message : String(error));
     } finally {
       setOcrLoading(false);
     }
