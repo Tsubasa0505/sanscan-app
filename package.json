@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start -p $PORT",
     "lint": "next lint",
     "postinstall": "prisma generate",
@@ -23,6 +23,9 @@
     "react-force-graph-2d": "^1.28.0",
     "recharts": "^3.1.2",
     "web-push": "^3.6.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

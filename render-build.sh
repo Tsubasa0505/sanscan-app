@@ -4,5 +4,6 @@ set -o errexit
 
 npm install
 npx prisma generate
-npx prisma migrate deploy || echo "Migration skipped"
+# Prismaスキーマをデータベースにプッシュ
+npx prisma db push --accept-data-loss
 npm run build
