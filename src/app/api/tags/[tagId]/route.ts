@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma';
 // 特定のタグ取得
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tagId: string } }
+  { params }: { params: Promise<{ tagId: string }> }
 ) {
   try {
-    const { tagId } = params;
+    const { tagId } = await params;
 
     const tag = await prisma.tag.findUnique({
       where: { id: tagId },
@@ -53,10 +53,10 @@ export async function GET(
 // タグ更新
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { tagId: string } }
+  { params }: { params: Promise<{ tagId: string }> }
 ) {
   try {
-    const { tagId } = params;
+    const { tagId } = await params;
     const body = await request.json();
     const { name, color, description } = body;
 
@@ -126,10 +126,10 @@ export async function PUT(
 // タグ削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { tagId: string } }
+  { params }: { params: Promise<{ tagId: string }> }
 ) {
   try {
-    const { tagId } = params;
+    const { tagId } = await params;
 
     // タグの存在チェック
     const existingTag = await prisma.tag.findUnique({

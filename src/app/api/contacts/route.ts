@@ -1,11 +1,22 @@
+/**
+ * CLAUDE.md準拠: 名刺管理API - 連絡先のCRUD操作
+ * 技術スタック: Next.js 15 App Router + Prisma + TypeScript
+ * 制約: Company.nameは@unique制約のためconnectOrCreateを使用
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * GET: すべての連絡先を取得（ページネーションと検索機能付き）
+ * CLAUDE.md準拠: 非同期処理でawaitを明示的に使用
+ * @param request - Next.jsのリクエストオブジェクト
+ * @returns 連絡先リストとページネーション情報
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
-    // ページネーションパラメータ
+    // ページネーションパラメータ（CLAUDE.md: 差分最小化の原則）
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
@@ -20,7 +31,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     
-    // 検索条件の構築
+    // 検索条件の構築（CLAUDE.md: 既存構造を優先利用）
     const whereCondition: any = {};
     
     if (search) {
@@ -76,10 +87,10 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    // 総件数を取得
+    // 総件数を取得（CLAUDE.md: Prisma非同期処理）
     const totalCount = await prisma.contact.count({ where: whereCondition });
     
-    // ページネーション付きでデータを取得
+    // ページネーション付きでデータを取得（CLAUDE.md: awaitを明示）
     const items = await prisma.contact.findMany({
       where: whereCondition,
       include: { 
@@ -112,13 +123,22 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * POST: 新しい連絡先を作成
+ * CLAUDE.md準拠: Company.nameのunique制約を考慮してconnectOrCreateを使用
+ * 差分最小化の原則に従い、既存の構造を優先的に利用
+ * @param req - 連絡先データを含むリクエスト
+ * @returns 作成された連絡先データ
+ */
 export async function POST(req: Request) {
   try {
+    // リクエストボディの取得と検証（CLAUDE.md: エラーハンドリング）
     const b = await req.json();
     if (!b.fullName) {
       return NextResponse.json({ error: "fullName is required" }, { status: 400 });
     }
 
+    // 連絡先の作成（CLAUDE.md: Company.nameは@unique制約）
     const created = await prisma.contact.create({
       data: {
         fullName: b.fullName,
@@ -128,6 +148,8 @@ export async function POST(req: Request) {
         notes: b.notes || null,
         businessCardImage: b.businessCardImage || null,
         profileImage: b.profileImage || null,
+        // CLAUDE.md準拠: Company.nameは@unique制約のため、
+        // 必ずconnectOrCreateを使用して既存会社を再利用または新規作成
         ...(b.companyName
           ? {
               company: {

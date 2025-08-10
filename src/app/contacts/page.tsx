@@ -118,16 +118,6 @@ export default function ContactsPage() {
     loadContacts(1, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null); 
   }, []);
 
-  // ダークモードの初期化（ローカルストレージから読み取り）
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode) {
-      setIsDarkMode(JSON.parse(savedDarkMode));
-    }
-  }, []);
-
-  // ダークモードの切り替え
-
   // 連絡先選択の管理
   const handleSelectContact = (contactId: string, checked: boolean) => {
     if (checked) {

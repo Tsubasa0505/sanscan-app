@@ -4,11 +4,12 @@ import { prisma } from '@/lib/prisma';
 // 個別リマインダー取得
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const reminder = await prisma.reminder.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         contact: {
           include: {
@@ -39,9 +40,10 @@ export async function GET(
 // リマインダー更新
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const {
       type,
@@ -59,7 +61,7 @@ export async function PUT(
     } = body;
 
     const existingReminder = await prisma.reminder.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingReminder) {
@@ -70,7 +72,7 @@ export async function PUT(
     }
 
     const updatedReminder = await prisma.reminder.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(type && { type }),
         ...(title && { title }),
@@ -114,11 +116,12 @@ export async function PUT(
 // リマインダー削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const existingReminder = await prisma.reminder.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingReminder) {
@@ -129,7 +132,7 @@ export async function DELETE(
     }
 
     await prisma.reminder.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({

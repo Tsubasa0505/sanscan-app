@@ -115,7 +115,7 @@ export default function RemindersPage() {
     e.preventDefault();
     
     if (!newReminder.contactId || !newReminder.title || !newReminder.reminderAt) {
-      alert('必須項目を入力してください');
+      showToast('warning', '入力エラー', '必須項目を入力してください');
       return;
     }
 
@@ -142,12 +142,13 @@ export default function RemindersPage() {
           notifyBefore: 60
         });
         loadData();
+        showToast('success', '作成完了', 'リマインダーを作成しました');
       } else {
         const error = await res.json();
-        alert('エラー: ' + error.error);
+        showToast('error', 'エラー', error.error);
       }
     } catch (error) {
-      alert('リマインダーの作成に失敗しました');
+      showToast('error', '作成失敗', 'リマインダーの作成に失敗しました');
     }
   };
 
@@ -161,15 +162,16 @@ export default function RemindersPage() {
 
       if (res.ok) {
         loadData();
+        showToast('success', '完了', 'リマインダーを完了しました');
       }
     } catch (error) {
-      alert('リマインダーの完了に失敗しました');
+      showToast('error', '完了失敗', 'リマインダーの完了に失敗しました');
     }
   };
 
   const bulkAction = async (action: 'complete' | 'delete') => {
     if (selectedReminders.length === 0) {
-      alert('リマインダーを選択してください');
+      showToast('warning', '選択エラー', 'リマインダーを選択してください');
       return;
     }
 
@@ -186,9 +188,10 @@ export default function RemindersPage() {
       if (res.ok) {
         setSelectedReminders([]);
         loadData();
+        showToast('success', '完了', '一括操作を実行しました');
       }
     } catch (error) {
-      alert('一括操作に失敗しました');
+      showToast('error', '操作失敗', '一括操作に失敗しました');
     }
   };
 
@@ -213,11 +216,11 @@ export default function RemindersPage() {
       });
 
       if (res.ok) {
-        alert('リマインダーを作成しました');
+        showToast('success', '作成完了', 'リマインダーを作成しました');
         loadData();
       }
     } catch (error) {
-      alert('リマインダーの作成に失敗しました');
+      showToast('error', '作成失敗', 'リマインダーの作成に失敗しました');
     }
   };
 

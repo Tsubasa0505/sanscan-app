@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma';
 // 特定のグループ取得
 export async function GET(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   try {
-    const { groupId } = params;
+    const { groupId } = await params;
 
     const group = await prisma.group.findUnique({
       where: { id: groupId },
@@ -68,10 +68,10 @@ export async function GET(
 // グループ更新
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   try {
-    const { groupId } = params;
+    const { groupId } = await params;
     const body = await request.json();
     const { name, description, color, type, conditions, isActive, tagIds } = body;
 
@@ -193,10 +193,10 @@ export async function PUT(
 // グループ削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   try {
-    const { groupId } = params;
+    const { groupId } = await params;
 
     // グループの存在チェック
     const existingGroup = await prisma.group.findUnique({
