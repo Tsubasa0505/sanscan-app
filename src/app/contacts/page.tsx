@@ -214,17 +214,18 @@ export default function ContactsPage() {
       if (response.ok) {
         if (result.ocrEnabled === false) {
           // OCRが無効の場合、手動入力フォームを表示
-          setFormData({
-            ...formData,
+          setEditForm({
+            id: '',  // 新規作成時は空
             fullName: '',
             email: '',
             phone: '',
-            company: '',
             position: '',
+            companyName: '',
             notes: '',
-            businessCardImage: result.businessCardUrl
+            businessCardImage: result.businessCardUrl,
+            profileImage: ''
           });
-          setShowModal(true);
+          setShowEditModal(true);
           showToast('info', '名刺画像を保存しました', '連絡先情報を入力してください');
           setShowOcrModal(false);
           setOcrFile(null);
@@ -320,23 +321,44 @@ export default function ContactsPage() {
     setShowEditModal(true);
   }
 
-  // 編集を保存
+  // 編集/新規作成を保存
   async function saveEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!editForm.fullName.trim()) return alert("名前は必須です");
     setLoading(true);
     try {
-      const res = await fetch(`/api/contacts/${editForm.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      if (editForm.id) {
+        // 既存の連絡先を更新
+        const res = await fetch(`/api/contacts/${editForm.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editForm),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        showToast('success', '更新完了', '連絡先を更新しました');
+      } else {
+        // 新規連絡先を作成
+        const res = await fetch('/api/contacts', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: editForm.fullName,
+            email: editForm.email,
+            phone: editForm.phone,
+            position: editForm.position,
+            company: editForm.companyName,
+            notes: editForm.notes,
+            businessCardImage: editForm.businessCardImage,
+            profileImage: editForm.profileImage
+          }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        showToast('success', '登録完了', '新しい連絡先を登録しました');
+      }
       setShowEditModal(false);
       await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder);
-      showToast('success', '更新完了', '連絡先を更新しました');
     } catch (err) {
-      showToast('error', '更新失敗', err instanceof Error ? err.message : String(err));
+      showToast('error', editForm.id ? '更新失敗' : '登録失敗', err instanceof Error ? err.message : String(err));
     } finally { setLoading(false); }
   }
 
@@ -1514,8 +1536,8 @@ export default function ContactsPage() {
                 <h2 className={`text-xl font-semibold mb-6 flex items-center ${
                   isDarkMode ? 'text-gray-100' : 'text-gray-900'
                 }`}>
-                  <span className="mr-2">✏️</span>
-                  連絡先を編集
+                  <span className="mr-2">{editForm.id ? '✏️' : '➕'}</span>
+                  {editForm.id ? '連絡先を編集' : '新規連絡先を登録'}
                 </h2>
                 <form onSubmit={saveEdit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
