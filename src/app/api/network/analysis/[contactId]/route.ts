@@ -4,10 +4,10 @@ import { NetworkAnalyzer, NetworkNode, NetworkEdge } from '@/lib/networkAnalysis
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { contactId: string } }
+  { params }: { params: Promise<{ contactId: string }> }
 ) {
   try {
-    const contactId = params.contactId;
+    const { contactId } = await params;
 
     // 指定された連絡先の詳細を取得
     const contact = await prisma.contact.findUnique({

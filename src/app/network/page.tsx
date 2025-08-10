@@ -4,11 +4,16 @@ import Link from "next/link";
 import dynamic from 'next/dynamic';
 import PageLayout from "@/components/PageLayout";
 import { useTheme } from "@/contexts/ThemeContext";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { SkeletonCard } from "@/components/ui/SkeletonLoader";
+import EmptyState from "@/components/ui/EmptyState";
+import AnimatedButton from "@/components/ui/AnimatedButton";
+import { useToast } from "@/contexts/ToastContext";
 
 // 動的インポートでSSRエラーを回避
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-96 text-gray-500">グラフを読み込み中...</div>
+  loading: () => <LoadingSpinner size="lg" text="グラフを読み込み中..." />
 });
 
 type NetworkNode = {
@@ -50,6 +55,7 @@ export default function NetworkPage() {
   const [data, setData] = useState<NetworkData | null>(null);
   const [loading, setLoading] = useState(true);
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { showToast } = useToast();
   const [selectedNode, setSelectedNode] = useState<NetworkNode | null>(null);
   const [nodeAnalysis, setNodeAnalysis] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -178,8 +184,8 @@ export default function NetworkPage() {
   if (loading) {
     return (
       <PageLayout title="🔗 人脈ネットワークマップ" subtitle="連絡先同士の関係性を可視化">
-        <div className="flex items-center justify-center h-96">
-          <div className="text-xl">🔗 ネットワークデータを読み込み中...</div>
+        <div className="py-6">
+          <SkeletonCard className="h-96" />
         </div>
       </PageLayout>
     );
@@ -188,8 +194,13 @@ export default function NetworkPage() {
   if (!data) {
     return (
       <PageLayout title="🔗 人脈ネットワークマップ" subtitle="連絡先同士の関係性を可視化">
-        <div className="flex items-center justify-center h-96">
-          <div className="text-xl">データの読み込みに失敗しました</div>
+        <div className="py-6">
+          <EmptyState
+            title="データの読み込みに失敗しました"
+            description="ページをリロードしてください"
+            actionLabel="リロード"
+            onAction={() => window.location.reload()}
+          />
         </div>
       </PageLayout>
     );
@@ -385,7 +396,7 @@ export default function NetworkPage() {
                 
                 {analysisLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <LoadingSpinner size="sm" text="分析中..." />
                   </div>
                 ) : nodeAnalysis ? (
                   <div className="space-y-4">

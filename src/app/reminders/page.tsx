@@ -3,6 +3,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PageLayout from "@/components/PageLayout";
 import { useTheme } from "@/contexts/ThemeContext";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { SkeletonCard } from "@/components/ui/SkeletonLoader";
+import EmptyState from "@/components/ui/EmptyState";
+import AnimatedButton from "@/components/ui/AnimatedButton";
+import { useToast } from "@/contexts/ToastContext";
 
 type Reminder = {
   id: string;
@@ -43,6 +48,7 @@ export default function RemindersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'recommendations'>('active');
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { showToast } = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedReminders, setSelectedReminders] = useState<string[]>([]);
   const [stats, setStats] = useState({

@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma';
 // 連絡先のタグ一覧取得
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // 連絡先の存在チェック
     const contact = await prisma.contact.findUnique({
@@ -47,10 +47,10 @@ export async function GET(
 // 連絡先にタグを追加
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { tagIds, tagNames } = body;
 
@@ -207,10 +207,10 @@ export async function POST(
 // 連絡先からタグを削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { tagIds } = body;
 

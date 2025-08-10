@@ -2,6 +2,12 @@
 import { useEffect, useState } from "react";
 import PageLayout from "@/components/PageLayout";
 import { useTheme } from "@/contexts/ThemeContext";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { SkeletonCard, SkeletonTable } from "@/components/ui/SkeletonLoader";
+import AnimatedButton from "@/components/ui/AnimatedButton";
+import SearchInput from "@/components/ui/SearchInput";
+import EmptyState from "@/components/ui/EmptyState";
+import { useToast } from "@/contexts/ToastContext";
 
 type Contact = {
   id: string;
@@ -57,6 +63,7 @@ export default function ContactsPage() {
   
   // ダークモード用の状態
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { showToast } = useToast();
   
   // 一括メール送信用の状態
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
@@ -141,12 +148,12 @@ export default function ContactsPage() {
   // 一括メール送信
   async function sendBulkEmail() {
     if (selectedContacts.length === 0) {
-      alert('送信先を選択してください');
+      showToast('warning', '送信先未選択', '送信先を選択してください');
       return;
     }
     
     if (!bulkEmailForm.subject || !bulkEmailForm.content) {
-      alert('件名と本文は必須です');
+      showToast('warning', '入力エラー', '件名と本文は必須です');
       return;
     }
     
@@ -168,13 +175,13 @@ export default function ContactsPage() {
       }
       
       const result = await response.json();
-      alert(`${result.successCount}件のメールを送信しました${result.failureCount > 0 ? `（${result.failureCount}件失敗）` : ''}`);
+      showToast('success', 'メール送信完了', `${result.successCount}件のメールを送信しました${result.failureCount > 0 ? `（${result.failureCount}件失敗）` : ''}`);
       
       setShowBulkEmailModal(false);
       setSelectedContacts([]);
       setBulkEmailForm({ subject: "", content: "", template: "" });
     } catch (error) {
-      alert('メール送信エラー: ' + (error instanceof Error ? error.message : String(error)));
+      showToast('error', 'メール送信エラー', error instanceof Error ? error.message : String(error));
     } finally {
       setLoading(false);
     }
@@ -203,7 +210,7 @@ export default function ContactsPage() {
   // OCR処理
   async function processOcr() {
     if (!ocrFile) {
-      alert('画像ファイルを選択してください');
+      showToast('warning', 'ファイル未選択', '画像ファイルを選択してください');
       return;
     }
     
@@ -224,7 +231,7 @@ export default function ContactsPage() {
         setOcrResult(result);
         const contactName = result.contact?.fullName || result.mockData?.fullName || '連絡先';
         const modeText = result.demoMode ? '（デモモード）' : '';
-        alert(`名刺から連絡先を自動登録しました${modeText}: ${contactName}`);
+        showToast('success', 'OCR完了', `名刺から連絡先を自動登録しました${modeText}: ${contactName}`);
         setShowOcrModal(false);
         setOcrFile(null);
         setOcrResult(null);
@@ -233,7 +240,7 @@ export default function ContactsPage() {
         throw new Error(result.error || 'OCR処理に失敗しました');
       }
     } catch (error) {
-      alert('OCRエラー: ' + (error instanceof Error ? error.message : String(error)));
+      showToast('error', 'OCRエラー', error instanceof Error ? error.message : String(error));
     } finally {
       setOcrLoading(false);
     }
@@ -290,8 +297,9 @@ export default function ContactsPage() {
       if (!res.ok) throw new Error(await res.text());
       setForm({ fullName: "", email: "", phone: "", position: "", companyName: "", notes: "", businessCardImage: "", profileImage: "" });
       await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder);
+      showToast('success', '保存完了', '連絡先を追加しました');
     } catch (err) {
-      alert("保存に失敗: " + (err instanceof Error ? err.message : String(err)));
+      showToast('error', '保存失敗', err instanceof Error ? err.message : String(err));
     } finally { setLoading(false); }
   }
 
@@ -325,8 +333,9 @@ export default function ContactsPage() {
       if (!res.ok) throw new Error(await res.text());
       setShowEditModal(false);
       await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder);
+      showToast('success', '更新完了', '連絡先を更新しました');
     } catch (err) {
-      alert("更新に失敗: " + (err instanceof Error ? err.message : String(err)));
+      showToast('error', '更新失敗', err instanceof Error ? err.message : String(err));
     } finally { setLoading(false); }
   }
 
@@ -340,15 +349,19 @@ export default function ContactsPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder);
+      showToast('success', '削除完了', '連絡先を削除しました');
     } catch (err) {
-      alert("削除に失敗: " + (err instanceof Error ? err.message : String(err)));
+      showToast('error', '削除失敗', err instanceof Error ? err.message : String(err));
     } finally { setLoading(false); }
   }
 
   // CSVインポート
   async function importCSV(e: React.FormEvent) {
     e.preventDefault();
-    if (!importFile) return alert("ファイルを選択してください");
+    if (!importFile) {
+      showToast('warning', 'ファイル未選択', 'ファイルを選択してください');
+      return;
+    }
     
     setLoading(true);
     try {
@@ -368,10 +381,10 @@ export default function ContactsPage() {
       await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder);
       
       if (result.successCount > 0) {
-        alert(`${result.successCount}件の連絡先をインポートしました`);
+        showToast('success', 'インポート完了', `${result.successCount}件の連絡先をインポートしました`);
       }
     } catch (err) {
-      alert("インポートに失敗: " + (err instanceof Error ? err.message : String(err)));
+      showToast('error', 'インポート失敗', err instanceof Error ? err.message : String(err));
     } finally { setLoading(false); }
   }
 
@@ -405,7 +418,7 @@ export default function ContactsPage() {
       
       return result.url;
     } catch (err) {
-      alert("画像アップロードに失敗: " + (err instanceof Error ? err.message : String(err)));
+      showToast('error', 'アップロード失敗', err instanceof Error ? err.message : String(err));
       return null;
     }
   }

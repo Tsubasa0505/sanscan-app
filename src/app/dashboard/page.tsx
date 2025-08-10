@@ -4,6 +4,11 @@ import Link from "next/link";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import PageLayout from "@/components/PageLayout";
 import { useTheme } from "@/contexts/ThemeContext";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { SkeletonCard } from "@/components/ui/SkeletonLoader";
+import EmptyState from "@/components/ui/EmptyState";
+import AnimatedButton from "@/components/ui/AnimatedButton";
+import { useToast } from "@/contexts/ToastContext";
 
 type Statistics = {
   overview: {
@@ -76,6 +81,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadStatistics();
@@ -141,8 +147,16 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <PageLayout title="📊 統計ダッシュボード" subtitle="連絡先データの分析と可視化">
-        <div className="flex items-center justify-center h-96">
-          <div className="text-xl">📊 読み込み中...</div>
+        <div className="py-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SkeletonCard className="h-96" />
+            <SkeletonCard className="h-96" />
+          </div>
         </div>
       </PageLayout>
     );
@@ -151,8 +165,13 @@ export default function DashboardPage() {
   if (!stats) {
     return (
       <PageLayout title="📊 統計ダッシュボード" subtitle="連絡先データの分析と可視化">
-        <div className="flex items-center justify-center h-96">
-          <div className="text-xl">データの読み込みに失敗しました</div>
+        <div className="py-6">
+          <EmptyState
+            title="データの読み込みに失敗しました"
+            description="ページをリロードしてください"
+            actionLabel="リロード"
+            onAction={() => window.location.reload()}
+          />
         </div>
       </PageLayout>
     );
@@ -178,7 +197,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* リマインダー統計カード */}
           {stats.reminders && (
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -198,7 +217,7 @@ export default function DashboardPage() {
 
           {/* 人脈価値統計カード */}
           {stats.networkStats && (
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -217,7 +236,7 @@ export default function DashboardPage() {
           )}
 
           {/* フォローアップ推奨統計カード */}
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -237,7 +256,7 @@ export default function DashboardPage() {
 
         {/* OCR・名刺関連統計カード */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -254,7 +273,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -271,7 +290,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -288,7 +307,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -308,7 +327,7 @@ export default function DashboardPage() {
 
         {/* 既存の統計カード */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -322,7 +341,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -336,7 +355,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -350,7 +369,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -368,7 +387,7 @@ export default function DashboardPage() {
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Monthly Registrations Chart */}
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               📈 月別登録数（過去12ヶ月）
             </h2>
@@ -404,7 +423,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Top Companies Chart */}
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               🏆 会社別連絡先数（Top 10）
             </h2>
@@ -436,7 +455,7 @@ export default function DashboardPage() {
         {/* Charts Row 2 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Email Coverage Pie Chart */}
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               📊 メールアドレス登録状況
             </h2>
@@ -468,7 +487,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Phone Coverage Pie Chart */}
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               📊 電話番号登録状況
             </h2>
@@ -500,7 +519,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Importance Distribution Pie Chart */}
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
             <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               ⭐ 重要度分布
             </h2>
@@ -592,7 +611,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
           {/* 直近のリマインダー */}
           {stats.reminders?.upcoming && stats.reminders.upcoming.length > 0 && (
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
               <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 ⏰ 直近のリマインダー
               </h2>
@@ -632,7 +651,7 @@ export default function DashboardPage() {
 
           {/* トップインフルエンサー */}
           {stats.networkStats?.topInfluencers && stats.networkStats.topInfluencers.length > 0 && (
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6`}>
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md p-6 card-hover animate-fade-in`}>
               <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 ⭐ 人脈価値ランキング
               </h2>
