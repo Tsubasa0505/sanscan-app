@@ -78,8 +78,8 @@ export class NetworkAnalyzer {
    * 関係性の強さを計算
    */
   static calculateRelationshipStrength(
-    contact1: any,
-    contact2: any,
+    contact1: { companyId?: string | null; introducedById?: string | null },
+    contact2: { companyId?: string | null; introducedById?: string | null },
     sharedData?: {
       sharedProjects?: number;
       meetingCount?: number;
@@ -478,7 +478,7 @@ export class NetworkAnalyzer {
 
     while (queue.length > 0) {
       // 最短距離のノードを選択
-      let current = queue.reduce((min, node) => 
+      const current = queue.reduce((min, node) => 
         (distances.get(node) || Infinity) < (distances.get(min) || Infinity) ? node : min
       );
       
@@ -574,7 +574,7 @@ export class NetworkAnalyzer {
     let totalClustering = 0;
     let nodeCount = 0;
 
-    for (const [nodeId, neighbors] of this.adjacencyList) {
+    for (const [, neighbors] of this.adjacencyList) {
       if (neighbors.length < 2) continue;
 
       let triangles = 0;

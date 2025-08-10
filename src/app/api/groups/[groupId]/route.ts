@@ -112,7 +112,7 @@ export async function PUT(
         if (!parsedConditions.rules || !Array.isArray(parsedConditions.rules)) {
           throw new Error('Invalid conditions structure');
         }
-      } catch (error) {
+      } catch {
         return NextResponse.json(
           { error: 'Invalid smart group conditions format' },
           { status: 400 }
@@ -121,7 +121,7 @@ export async function PUT(
     }
 
     // グループ更新
-    const updatedGroup = await prisma.group.update({
+    await prisma.group.update({
       where: { id: groupId },
       data: {
         ...(name && { name: name.trim() }),

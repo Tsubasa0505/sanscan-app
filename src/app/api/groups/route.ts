@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type'); // custom, smart, project, event
     const includeStats = searchParams.get('stats') === 'true';
 
-    let whereClause: any = {
+    const whereClause: Record<string, unknown> = {
       isActive: true
     };
 
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         if (!parsedConditions.rules || !Array.isArray(parsedConditions.rules)) {
           throw new Error('Invalid conditions structure');
         }
-      } catch (error) {
+      } catch {
         return NextResponse.json(
           { error: 'Invalid smart group conditions format' },
           { status: 400 }

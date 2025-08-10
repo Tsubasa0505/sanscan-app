@@ -149,7 +149,7 @@ export async function DELETE(
 }
 
 // 繰り返しリマインダーの次回作成
-async function createNextRecurringReminder(reminder: any) {
+async function createNextRecurringReminder(reminder: { contactId: string; type: string; title: string; description?: string | null; recurringType: string; recurringInterval?: number | null; reminderAt: Date }) {
   const nextReminderAt = calculateNextReminderDate(
     reminder.reminderAt,
     reminder.recurringType,

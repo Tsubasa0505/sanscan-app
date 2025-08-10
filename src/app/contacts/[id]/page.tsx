@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 
 type ContactDetail = {
@@ -54,7 +55,6 @@ type ContactDetail = {
 
 export default function ContactDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const [data, setData] = useState<ContactDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -79,7 +79,7 @@ export default function ContactDetailPage() {
     useTemplate: false,
     templateId: ""
   });
-  const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<Array<{ id: string; name: string; subject: string; content: string }>>([]);
   const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
@@ -295,9 +295,11 @@ export default function ContactDetailPage() {
               <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
                 <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
                   {contact.profileImage ? (
-                    <img 
+                    <Image 
                       src={contact.profileImage} 
                       alt="プロフィール画像" 
+                      width={96}
+                      height={96}
                       className="w-16 h-16 sm:w-24 sm:h-24 rounded-full object-cover shadow-lg flex-shrink-0"
                     />
                   ) : (
@@ -459,9 +461,11 @@ export default function ContactDetailPage() {
                     名刺
                   </p>
                   <div className="relative rounded-lg">
-                    <img 
+                    <Image 
                       src={contact.businessCardImage} 
                       alt="名刺" 
+                      width={448}
+                      height={280}
                       className="w-full h-auto max-w-md mx-auto object-contain rounded-lg shadow-md cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                       style={{ aspectRatio: '16/10', minHeight: '200px' }}
                       onClick={() => window.open(contact.businessCardImage!, '_blank')}
@@ -655,9 +659,11 @@ export default function ContactDetailPage() {
                     >
                       <div className="flex items-center gap-3">
                         {colleague.profileImage ? (
-                          <img 
+                          <Image 
                             src={colleague.profileImage} 
-                            alt="プロフィール画像" 
+                            alt="プロフィール画像"
+                            width={48}
+                            height={48} 
                             className="w-10 h-10 rounded-full object-cover"
                           />
                         ) : (

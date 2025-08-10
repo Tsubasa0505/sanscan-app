@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     const uploadDir = path.join(process.cwd(), "public", "uploads");
     try {
       await mkdir(uploadDir, { recursive: true });
-    } catch (error) {
+    } catch {
       // ディレクトリが既に存在する場合は無視
     }
     

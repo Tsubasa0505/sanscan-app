@@ -65,7 +65,7 @@ export async function GET() {
     });
 
     // 同じ会社の人同士をリンク（会社が3人以上の場合のみ）
-    companiesMap.forEach((contactIds, companyName) => {
+    companiesMap.forEach((contactIds) => {
       if (contactIds.length >= 2 && contactIds.length <= 10) { // 2-10人の会社のみ
         for (let i = 0; i < contactIds.length; i++) {
           for (let j = i + 1; j < contactIds.length; j++) {

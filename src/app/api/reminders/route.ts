@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
     
-    let whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
     
     // フィルター条件
     if (contactId) {

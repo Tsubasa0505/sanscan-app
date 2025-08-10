@@ -87,7 +87,7 @@ export async function GET(
             id: conn.id,
             from: conn.fromId,
             to: conn.toId,
-            type: conn.type as any,
+            type: conn.type,
             strength: conn.strength,
             sharedProjects: conn.sharedProjects,
             meetingCount: conn.meetingCount,
@@ -265,10 +265,14 @@ function findShortestPath(analyzer: NetworkAnalyzer, from: string, to: string): 
 }
 
 function getSecondDegreeConnections(
-  contact: any, 
+  contact: { id: string }, 
   directConnectionIds: string[], 
-  allContacts: any[]
-): any[] {
+  allContacts: Array<{
+    id: string;
+    networkConnectionsFrom: Array<{ toId: string }>;
+    networkConnectionsTo: Array<{ fromId: string }>;
+  }>
+): string[] {
   const secondDegree = new Set<string>();
   const excludeIds = new Set([contact.id, ...directConnectionIds]);
 
@@ -276,7 +280,7 @@ function getSecondDegreeConnections(
   directConnectionIds.forEach(directId => {
     const directContact = allContacts.find(c => c.id === directId);
     if (directContact) {
-      directContact.networkConnectionsFrom.forEach((conn: any) => {
+      directContact.networkConnectionsFrom.forEach((conn) => {
         if (!excludeIds.has(conn.toId)) {
           secondDegree.add(conn.toId);
         }
@@ -305,7 +309,7 @@ function calculateReachableContacts(analyzer: NetworkAnalyzer, contactId: string
   const queue = [{ id: contactId, depth: 0 }];
 
   while (queue.length > 0) {
-    const { id, depth } = queue.shift()!;
+    const { depth } = queue.shift()!;
     
     if (depth >= maxDepth) continue;
     
@@ -315,7 +319,7 @@ function calculateReachableContacts(analyzer: NetworkAnalyzer, contactId: string
   return visited.size - 1; // 自分自身を除く
 }
 
-function analyzeIndustryConnections(connections: any[]) {
+function analyzeIndustryConnections(connections: Array<{ company?: { industry?: string | null }; to?: { fullName: string }; strength: number }>) {
   const industries = new Map<string, { count: number; avgStrength: number; contacts: string[] }>();
 
   connections.forEach(conn => {
@@ -349,7 +353,7 @@ function analyzeIndustryConnections(connections: any[]) {
     .sort((a, b) => b.count - a.count);
 }
 
-function generateFollowUpRecommendations(contact: any, connections: any[]) {
+function generateFollowUpRecommendations(contact: { fullName: string; introducedByScore?: number }, connections: Array<{ to?: { fullName: string; introducedByScore?: number }; lastInteraction?: Date | null }>) {
   const recommendations = [];
   const now = new Date();
 

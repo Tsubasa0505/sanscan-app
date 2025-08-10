@@ -3,19 +3,35 @@ import webpush from 'web-push';
 
 // VAPID設定（実際の本番環境では環境変数から取得）
 const vapidKeys = {
-  publicKey: process.env.VAPID_PUBLIC_KEY || 'your-public-vapid-key',
-  privateKey: process.env.VAPID_PRIVATE_KEY || 'your-private-vapid-key'
+  publicKey: process.env.VAPID_PUBLIC_KEY || '',
+  privateKey: process.env.VAPID_PRIVATE_KEY || ''
 };
 
-webpush.setVapidDetails(
-  'mailto:your-email@example.com',
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+// VAPIDキーが設定されている場合のみ初期化
+if (vapidKeys.publicKey && vapidKeys.privateKey && 
+    vapidKeys.publicKey !== '' && vapidKeys.privateKey !== '') {
+  try {
+    webpush.setVapidDetails(
+      'mailto:your-email@example.com',
+      vapidKeys.publicKey,
+      vapidKeys.privateKey
+    );
+  } catch (error) {
+    console.warn('Failed to set VAPID details:', error);
+  }
+}
 
 // プッシュ通知送信
 export async function POST(request: NextRequest) {
   try {
+    // VAPIDキーが設定されていない場合はエラーを返す
+    if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
+      return NextResponse.json(
+        { error: 'Push notifications are not configured. Please set VAPID keys.' },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const { subscription, payload, options = {} } = body;
 

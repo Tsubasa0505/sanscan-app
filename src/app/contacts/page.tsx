@@ -1,13 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import PageLayout from "@/components/PageLayout";
 import { useTheme } from "@/contexts/ThemeContext";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import { SkeletonCard, SkeletonTable } from "@/components/ui/SkeletonLoader";
-import AnimatedButton from "@/components/ui/AnimatedButton";
-import SearchInput from "@/components/ui/SearchInput";
-import EmptyState from "@/components/ui/EmptyState";
 import { useToast } from "@/contexts/ToastContext";
+import Image from "next/image";
 
 type Contact = {
   id: string;
@@ -77,7 +72,7 @@ export default function ContactsPage() {
   // OCR用の状態
   const [showOcrModal, setShowOcrModal] = useState(false);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
-  const [ocrResult, setOcrResult] = useState<any>(null);
+  const [ocrResult, setOcrResult] = useState<{ fullName?: string; company?: string; email?: string; phone?: string; department?: string; position?: string; address?: string } | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
 
   async function loadContacts(page = 1, search = "", companyFilter = "", importanceFilter = null, sort = sortBy, order = sortOrder, hasBusinessCard = null) {
@@ -182,7 +177,7 @@ export default function ContactsPage() {
     try {
       const response = await fetch('/api/email/send');
       const templates = await response.json();
-      const template = templates.find((t: any) => t.id === templateId);
+      const template = templates.find((t) => t.id === templateId);
       
       if (template) {
         setBulkEmailForm({
@@ -893,10 +888,12 @@ export default function ContactsPage() {
                       />
                       {form.businessCardImage && (
                         <div className="relative">
-                          <img 
+                          <Image 
                             src={form.businessCardImage} 
                             alt="名刺画像" 
-                            className="w-32 h-20 object-contain rounded border"
+                            width={128}
+                            height={80}
+                            className="object-contain rounded border"
                             style={{ aspectRatio: '16/10' }}
                           />
                           <button
@@ -928,10 +925,12 @@ export default function ContactsPage() {
                       />
                       {form.profileImage && (
                         <div className="relative">
-                          <img 
+                          <Image 
                             src={form.profileImage} 
                             alt="顔写真" 
-                            className="w-20 h-20 object-cover rounded-full border"
+                            width={80}
+                            height={80}
+                            className="object-cover rounded-full border"
                           />
                           <button
                             type="button"
@@ -1078,10 +1077,12 @@ export default function ContactsPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             {contact.profileImage ? (
-                              <img 
+                              <Image 
                                 src={contact.profileImage} 
                                 alt="顔写真" 
-                                className="w-10 h-10 rounded-full object-cover mr-3 shadow-md"
+                                width={40}
+                                height={40}
+                                className="rounded-full object-cover mr-3 shadow-md"
                               />
                             ) : (
                               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3 shadow-md">
@@ -1107,10 +1108,12 @@ export default function ContactsPage() {
                             </div>
                             {contact.businessCardImage && (
                               <div className="ml-2">
-                                <img 
+                                <Image 
                                   src={contact.businessCardImage} 
                                   alt="名刺画像" 
-                                  className="w-16 h-10 object-contain rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                                  width={64}
+                                  height={40}
+                                  className="object-contain rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
                                   style={{ aspectRatio: '16/10' }}
                                   title="名刺画像をクリックして拡大"
                                   onClick={() => contact.businessCardImage && window.open(contact.businessCardImage, '_blank')}
@@ -1239,10 +1242,12 @@ export default function ContactsPage() {
                         />
                         
                         {contact.profileImage ? (
-                          <img 
+                          <Image 
                             src={contact.profileImage} 
                             alt="顔写真" 
-                            className="w-12 h-12 rounded-full object-cover mr-3 shadow-md flex-shrink-0"
+                            width={48}
+                            height={48}
+                            className="rounded-full object-cover mr-3 shadow-md flex-shrink-0"
                           />
                         ) : (
                           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3 shadow-md flex-shrink-0">
@@ -1281,10 +1286,12 @@ export default function ContactsPage() {
                       {/* Business card thumbnail */}
                       {contact.businessCardImage && (
                         <div className="ml-3 flex-shrink-0">
-                          <img 
+                          <Image 
                             src={contact.businessCardImage} 
                             alt="名刺画像" 
-                            className="w-12 h-8 object-contain rounded border shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                            width={48}
+                            height={32}
+                            className="object-contain rounded border shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
                             style={{ aspectRatio: '16/10' }}
                             title="名刺画像をクリックして拡大"
                             onClick={() => contact.businessCardImage && window.open(contact.businessCardImage, '_blank')}
@@ -1621,10 +1628,12 @@ export default function ContactsPage() {
                           />
                           {editForm.businessCardImage && (
                             <div className="relative">
-                              <img 
+                              <Image 
                                 src={editForm.businessCardImage} 
                                 alt="名刺画像" 
-                                className="w-32 h-20 object-contain rounded-lg border shadow-sm"
+                                width={128}
+                                height={80}
+                                className="object-contain rounded-lg border shadow-sm"
                                 style={{ aspectRatio: '16/10' }}
                               />
                               <button
@@ -1662,10 +1671,12 @@ export default function ContactsPage() {
                           />
                           {editForm.profileImage && (
                             <div className="relative">
-                              <img 
+                              <Image 
                                 src={editForm.profileImage} 
                                 alt="顔写真" 
-                                className="w-20 h-20 object-cover rounded-full border shadow-sm"
+                                width={80}
+                                height={80}
+                                className="object-cover rounded-full border shadow-sm"
                               />
                               <button
                                 type="button"

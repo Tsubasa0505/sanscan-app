@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     
     // 検索条件の構築（CLAUDE.md: 既存構造を優先利用）
-    const whereCondition: any = {};
+    const whereCondition: Record<string, unknown> = {};
     
     if (search) {
       whereCondition.OR = [

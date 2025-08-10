@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
             id: conn.id,
             from: conn.fromId,
             to: conn.toId,
-            type: conn.type as any,
+            type: conn.type,
             strength: conn.strength,
             sharedProjects: conn.sharedProjects,
             meetingCount: conn.meetingCount,
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
               id: conn.id,
               from: conn.fromId,
               to: conn.toId,
-              type: conn.type as any,
+              type: conn.type,
               strength: conn.strength,
               sharedProjects: conn.sharedProjects,
               meetingCount: conn.meetingCount,
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
 }
 
 // 自動的に関係性を生成する関数
-async function generateAutomaticConnections(contacts: any[]) {
+async function generateAutomaticConnections(contacts: Array<{ id: string; fullName: string; companyId?: string | null; createdAt: Date; company?: { name: string; industry?: string | null } | null }>) {
   const connections = [];
 
   // 現在存在するコンタクトIDのセットを作成
@@ -244,7 +244,7 @@ async function updateNetworkAnalysisResults(nodes: NetworkNode[]) {
 }
 
 // フォーカス連絡先周辺の結果をフィルタリング
-function filterAroundFocusContact(result: any, focusId: string, depth: number = 2) {
+function filterAroundFocusContact(result: { nodes: Array<{ id: string }>; edges: Array<{ id: string; from: string; to: string }> }, focusId: string, depth: number = 2) {
   const relevantNodes = new Set<string>([focusId]);
   const relevantEdges = new Set<string>();
 

@@ -46,7 +46,6 @@ export async function GET() {
     
     // 月別に集計
     const monthlyData: { [key: string]: number } = {};
-    const now = new Date();
     
     // 過去12ヶ月のラベルを初期化
     for (let i = 11; i >= 0; i--) {

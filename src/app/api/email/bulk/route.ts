@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         };
 
         // メール送信
-        const info = await transporter.sendMail(mailOptions);
+        await transporter.sendMail(mailOptions);
         
         // 送信履歴を記録
         await prisma.contactHistory.create({

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 
 // プッシュ通知購読解除
 export async function POST(request: NextRequest) {

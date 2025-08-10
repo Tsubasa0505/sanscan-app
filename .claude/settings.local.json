@@ -26,7 +26,12 @@
       "Bash(git push:*)",
       "Bash(taskkill:*)",
       "Bash(rd:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm run check:claude:*)",
+      "Bash(powershell:*)",
+      "Bash(npm run lint:*)",
+      "Bash(cmd /c:*)",
+      "Bash(npm run check:all:*)"
     ],
     "deny": []
   }
