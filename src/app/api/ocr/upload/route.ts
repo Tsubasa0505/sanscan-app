@@ -8,27 +8,93 @@ const prisma = new PrismaClient();
 
 // 名前を解析する関数
 function parseName(text: string): string {
-  // 改行で分割して最初の行を名前として扱う
+  // 改行で分割
   const lines = text.split('\n').filter(line => line.trim());
-  if (lines.length > 0) {
-    // 一般的な日本の名前パターンを検索
-    const namePatterns = [
-      /([一-龯ぁ-んァ-ヶー]+[\s　]+[一-龯ぁ-んァ-ヶー]+)/,
-      /([A-Z][a-z]+[\s]+[A-Z][a-z]+)/, // 英語名
-      /([一-龯]+[\s　]*[一-龯]+)/, // 漢字のみ
-    ];
+  
+  // 役職や会社名のキーワード（これらは名前ではない）
+  const excludeKeywords = [
+    "株式会社", "有限会社", "合同会社", "Inc.", "Corp.", "Ltd.",
+    "部長", "課長", "係長", "主任", "マネージャー", "ディレクター",
+    "CEO", "CTO", "CFO", "COO", "President", "Manager", "Director",
+    "Tel", "TEL", "Fax", "FAX", "E-mail", "Email", "〒", "http", "www"
+  ];
+  
+  // 日本人の名前パターン（姓と名の間にスペースがある）
+  const japaneseNamePatterns = [
+    /^([一-龯ぁ-んァ-ヶー]{2,4}[\s　]+[一-龯ぁ-んァ-ヶー]{2,4})$/,  // 漢字・かな・カナの姓名
+    /^([一-龯]{2,4}[\s　]+[一-龯]{2,4})$/,  // 漢字のみの姓名
+    /^([ァ-ヶー]{2,6}[\s　]+[ァ-ヶー]{2,6})$/,  // カタカナのみの姓名
+  ];
+  
+  // 英語名のパターン
+  const englishNamePatterns = [
+    /^([A-Z][a-z]+[\s]+[A-Z][a-z]+)$/,  // First Last
+    /^([A-Z][a-z]+[\s]+[A-Z]\.[\s]*[A-Z][a-z]+)$/,  // First M. Last
+  ];
+  
+  // 各行をチェック
+  for (const line of lines) {
+    const trimmedLine = line.trim();
     
-    for (const line of lines) {
-      for (const pattern of namePatterns) {
-        const match = line.match(pattern);
-        if (match) {
-          return match[1].trim();
+    // 除外キーワードが含まれている行はスキップ
+    if (excludeKeywords.some(keyword => trimmedLine.includes(keyword))) {
+      continue;
+    }
+    
+    // メールアドレスや電話番号が含まれている行はスキップ
+    if (trimmedLine.includes('@') || /\d{2,4}-\d{2,4}-\d{4}/.test(trimmedLine)) {
+      continue;
+    }
+    
+    // 日本人名のパターンをチェック
+    for (const pattern of japaneseNamePatterns) {
+      const match = trimmedLine.match(pattern);
+      if (match) {
+        console.log('Found Japanese name:', match[1]);
+        return match[1].trim();
+      }
+    }
+    
+    // 英語名のパターンをチェック
+    for (const pattern of englishNamePatterns) {
+      const match = trimmedLine.match(pattern);
+      if (match) {
+        console.log('Found English name:', match[1]);
+        return match[1].trim();
+      }
+    }
+    
+    // スペースで区切られた2-3単語で、適切な長さの場合は名前として扱う
+    const words = trimmedLine.split(/[\s　]+/);
+    if (words.length === 2 || words.length === 3) {
+      const isValidName = words.every(word => 
+        word.length >= 2 && word.length <= 10 && 
+        !excludeKeywords.some(keyword => word.includes(keyword))
+      );
+      
+      if (isValidName) {
+        // 全体が日本語文字または英語文字で構成されているか確認
+        if (/^[一-龯ぁ-んァ-ヶー\s　]+$/.test(trimmedLine) || 
+            /^[A-Za-z\s\.]+$/.test(trimmedLine)) {
+          console.log('Found potential name:', trimmedLine);
+          return trimmedLine;
         }
       }
     }
-    // パターンに一致しない場合は最初の非空行を返す
-    return lines[0].trim();
   }
+  
+  // 名前が見つからない場合は、最初の適切な行を返す
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.length >= 2 && trimmedLine.length <= 20 &&
+        !excludeKeywords.some(keyword => trimmedLine.includes(keyword)) &&
+        !trimmedLine.includes('@') && 
+        !/\d{2,4}-\d{2,4}-\d{4}/.test(trimmedLine)) {
+      console.log('Using first valid line as name:', trimmedLine);
+      return trimmedLine;
+    }
+  }
+  
   return "";
 }
 
@@ -179,6 +245,10 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('OCR Result:', text);
+    console.log('=== OCR Text Lines ===');
+    text.split('\n').forEach((line, i) => {
+      console.log(`Line ${i}: "${line.trim()}"`);
+    });
 
     // テキストから情報を抽出
     const fullName = parseName(text) || "";
@@ -186,6 +256,13 @@ export async function POST(request: NextRequest) {
     const phone = parsePhone(text) || "";
     const companyName = parseCompany(text) || "";
     const position = parsePosition(text) || "";
+    
+    console.log('=== Extracted Data ===');
+    console.log('Name:', fullName);
+    console.log('Email:', email);
+    console.log('Phone:', phone);
+    console.log('Company:', companyName);
+    console.log('Position:', position);
 
     // 会社を作成または取得
     let company = null;
