@@ -32,7 +32,8 @@
       "Bash(npm run lint:*)",
       "Bash(cmd /c:*)",
       "Bash(npm run check:all:*)",
-      "Bash(echo \"Exit code: $?\")"
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(cat:*)"
     ],
     "deny": []
   }
