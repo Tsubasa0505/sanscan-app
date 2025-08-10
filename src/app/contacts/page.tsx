@@ -214,7 +214,8 @@ export default function ContactsPage() {
       if (response.ok) {
         if (result.ocrEnabled === false) {
           // OCRが無効の場合、手動入力フォームを表示
-          setEditingContact({
+          setFormData({
+            ...formData,
             fullName: '',
             email: '',
             phone: '',
@@ -223,7 +224,7 @@ export default function ContactsPage() {
             notes: '',
             businessCardImage: result.businessCardUrl
           });
-          setShowEditModal(true);
+          setShowModal(true);
           showToast('info', '名刺画像を保存しました', '連絡先情報を入力してください');
           setShowOcrModal(false);
           setOcrFile(null);
