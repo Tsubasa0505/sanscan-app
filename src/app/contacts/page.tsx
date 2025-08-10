@@ -192,23 +192,18 @@ export default function ContactsPage() {
     }
   };
 
-  // OCR処理（改善版：画面遷移して裏で処理）
-  async function processOcr() {
-    if (!ocrFile) {
-      showToast('warning', 'ファイル未選択', '画像ファイルを選択してください');
-      return;
-    }
-    
-    // すぐにモーダルを閉じて処理中メッセージを表示
+  // OCR処理（画像選択と同時に自動実行版）
+  async function processOcrAuto(file: File) {
+    // 即座にモーダルを閉じて処理開始
     setShowOcrModal(false);
     setOcrLoading(true);
-    showToast('info', '📸 処理中...', '名刺をOCR処理しています。完了したら自動で一覧に追加されます。');
+    showToast('info', '📸 スキャン開始', '名刺をOCR処理しています。完了したら自動で一覧に追加されます。');
     
     // バックグラウンドで処理を実行
     const formData = new FormData();
-    formData.append('file', ocrFile);
+    formData.append('file', file);
     
-    // ファイルをクリア（処理は続行）
+    // ファイル状態をクリア
     setOcrFile(null);
     setOcrResult(null);
     
@@ -2019,10 +2014,10 @@ export default function ContactsPage() {
                   <ol className={`list-decimal list-inside text-sm space-y-1 ${
                     isDarkMode ? 'text-gray-400' : 'text-gray-600'
                   }`}>
-                    <li>名刺の画像ファイルを選択してください</li>
-                    <li>Google Cloud Vision APIが自動で文字を認識します</li>
+                    <li>名刺の画像ファイルを選択すると自動でスキャン開始</li>
+                    <li>選択と同時に画面遷移してバックグラウンドで処理</li>
                     <li>氏名、会社名、電話番号、メールアドレスを自動抽出</li>
-                    <li>連絡先として自動登録されます</li>
+                    <li>処理完了後に連絡先リストに自動追加</li>
                   </ol>
                 </div>
 
@@ -2031,25 +2026,24 @@ export default function ContactsPage() {
                   <label className={`text-sm font-medium block mb-2 ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-700'
                   }`}>
-                    📎 名刺画像を選択
+                    📎 名刺画像を選択（選択と同時にスキャン開始）
                   </label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setOcrFile(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // 画像選択と同時にOCR処理を自動実行
+                        processOcrAuto(file);
+                      }
+                    }}
                     className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
                       isDarkMode 
                         ? 'bg-gray-700 border-gray-600 text-gray-100' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
                     }`}
                   />
-                  {ocrFile && (
-                    <div className={`mt-2 text-sm ${
-                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
-                    }`}>
-                      選択ファイル: {ocrFile.name}
-                    </div>
-                  )}
                 </div>
 
                 {/* OCR結果表示（デモモード時） */}
@@ -2091,7 +2085,7 @@ export default function ContactsPage() {
                   </ol>
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                <div className="flex justify-center pt-6 border-t border-gray-200">
                   <button
                     type="button"
                     onClick={() => {
@@ -2106,13 +2100,6 @@ export default function ContactsPage() {
                     }`}
                   >
                     ❌ キャンセル
-                  </button>
-                  <button
-                    onClick={processOcr}
-                    disabled={ocrLoading || !ocrFile}
-                    className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-lg hover:from-indigo-600 hover:to-indigo-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
-                  >
-                    {ocrLoading ? "🔄 OCR処理中..." : "📷 スキャン開始"}
                   </button>
                 </div>
               </div>
