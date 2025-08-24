@@ -24,13 +24,13 @@ export default function PageHeader({ title, showNavigation = true }: PageHeaderP
   return (
     <header className={`sticky top-0 z-40 backdrop-blur-lg ${
       theme === 'dark' 
-        ? 'bg-gray-900/95 border-b border-gray-800' 
-        : 'bg-white/95 border-b border-gray-200'
+        ? 'bg-slate-900/95 border-b border-slate-700' 
+        : 'bg-white/95 border-b border-slate-200'
     }`}>
       <div className="container mx-auto px-4">
         <div className="py-4">
           {/* タイトル */}
-          <h1 className={`text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent`}>
+          <h1 className={`text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent animate-gradient`}>
             {title}
           </h1>
           
@@ -45,14 +45,12 @@ export default function PageHeader({ title, showNavigation = true }: PageHeaderP
                       <Link
                         href={item.href}
                         className={`
-                          inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200
+                          inline-flex items-center gap-2 h-10 px-4 rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                           ${isActive 
-                            ? theme === 'dark'
-                              ? 'bg-blue-600 text-white shadow-lg'
-                              : 'bg-blue-500 text-white shadow-lg'
+                            ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
                             : theme === 'dark'
-                              ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900'
+                              ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white focus:ring-offset-slate-900'
+                              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 focus:ring-offset-white'
                           }
                         `}
                       >

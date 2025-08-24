@@ -93,7 +93,7 @@ export function Toast({ message, onClose }: ToastProps) {
           {message.title}
         </p>
         {message.description && (
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             {message.description}
           </p>
         )}
@@ -101,7 +101,7 @@ export function Toast({ message, onClose }: ToastProps) {
       
       <button
         onClick={handleClose}
-        className="ml-4 flex-shrink-0 inline-flex text-gray-400 hover:text-gray-500 focus:outline-none"
+        className="ml-4 flex-shrink-0 inline-flex text-slate-400 hover:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 rounded"
       >
         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />

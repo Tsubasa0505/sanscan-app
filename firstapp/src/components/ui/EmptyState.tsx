@@ -26,12 +26,12 @@ export default function EmptyState({
         </div>
       )}
       
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
         {title}
       </h3>
       
       {description && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 text-center max-w-md mb-6">
+        <p className="text-sm text-slate-600 dark:text-slate-400 text-center max-w-md mb-6">
           {description}
         </p>
       )}
@@ -39,7 +39,7 @@ export default function EmptyState({
       {action && (
         <button
           onClick={action.onClick}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 font-medium"
+          className="h-10 px-5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           {action.label}
         </button>

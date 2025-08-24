@@ -59,11 +59,11 @@ const ContactItem = memo(({
 
   return (
     <div
-      className={`p-4 rounded-lg border transition-all ${
+      className={`group relative p-5 rounded-xl transition-all duration-300 ${
         isDarkMode
-          ? 'bg-gray-800 border-gray-700 hover:bg-gray-750'
-          : 'bg-white border-gray-200 hover:shadow-md'
-      } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
+          ? 'bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm border border-gray-700/50 hover:border-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/10'
+          : 'bg-white/80 backdrop-blur-sm border border-gray-200/50 hover:border-purple-400/30 hover:shadow-xl hover:shadow-purple-500/5'
+      } ${isSelected ? 'ring-2 ring-purple-500 ring-offset-2 scale-[1.02]' : ''}`}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-3 flex-1">
@@ -72,7 +72,7 @@ const ContactItem = memo(({
               type="checkbox"
               checked={isSelected}
               onChange={handleSelect}
-              className="mt-1"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
             />
           )}
           
@@ -86,22 +86,22 @@ const ContactItem = memo(({
               />
             </div>
           ) : (
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-              isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-            }`}>
-              <span className="text-lg font-semibold">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${
+              isDarkMode ? 'from-purple-600 to-indigo-600' : 'from-purple-500 to-indigo-500'
+            } text-white font-semibold shadow-lg`}>
+              <span className="text-lg">
                 {contact.fullName.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
           
           <div className="flex-1 min-w-0">
-            <h3 className={`font-semibold text-lg ${
-              isDarkMode ? 'text-white' : 'text-gray-900'
-            }`}>
+            <h3 className={`font-semibold text-base leading-tight ${
+              isDarkMode ? 'text-gray-100' : 'text-gray-900'
+            } group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors`}>
               {contact.fullName}
               {contact.importance && contact.importance > 1 && (
-                <span className="ml-2 text-yellow-500">
+                <span className="ml-2 text-amber-500">
                   {'★'.repeat(Math.min(contact.importance, 5))}
                 </span>
               )}
@@ -117,7 +117,7 @@ const ContactItem = memo(({
             
             {contact.company?.name && (
               <p className={`text-sm font-medium ${
-                isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
               }`}>
                 {contact.company.name}
               </p>
@@ -125,17 +125,17 @@ const ContactItem = memo(({
             
             <div className="mt-2 space-y-1">
               {contact.email && (
-                <p className={`text-sm ${
+                <p className={`text-sm flex items-center gap-2 ${
                   isDarkMode ? 'text-gray-300' : 'text-gray-700'
                 }`}>
-                  📧 {contact.email}
+                  <span className="opacity-60">📧</span> {contact.email}
                 </p>
               )}
               {contact.phone && (
-                <p className={`text-sm ${
+                <p className={`text-sm flex items-center gap-2 ${
                   isDarkMode ? 'text-gray-300' : 'text-gray-700'
                 }`}>
-                  📱 {contact.phone}
+                  <span className="opacity-60">📱</span> {contact.phone}
                 </p>
               )}
             </div>
@@ -144,21 +144,21 @@ const ContactItem = memo(({
               <div className="mt-2 flex gap-3 text-xs">
                 {contact._count.introduced > 0 && (
                   <span className={`${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
                   }`}>
                     紹介: {contact._count.introduced}
                   </span>
                 )}
                 {contact._count.reminders > 0 && (
                   <span className={`${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
                   }`}>
                     リマインダー: {contact._count.reminders}
                   </span>
                 )}
                 {contact._count.contactTags > 0 && (
                   <span className={`${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
                   }`}>
                     タグ: {contact._count.contactTags}
                   </span>
@@ -172,11 +172,11 @@ const ContactItem = memo(({
           {onEdit && (
             <button
               onClick={handleEdit}
-              className={`px-3 py-1 text-sm rounded ${
+              className={`h-9 px-4 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
                 isDarkMode
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
-              }`}
+                  ? 'bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 hover:from-purple-600/30 hover:to-indigo-600/30 hover:border-purple-500/50 text-purple-300'
+                  : 'bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 hover:from-purple-100 hover:to-indigo-100 hover:border-purple-300 text-purple-700'
+              } hover:scale-105 hover:shadow-md`}
             >
               編集
             </button>
@@ -184,11 +184,11 @@ const ContactItem = memo(({
           {onDelete && (
             <button
               onClick={handleDelete}
-              className={`px-3 py-1 text-sm rounded ${
+              className={`h-9 px-4 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
                 isDarkMode
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'bg-red-500 hover:bg-red-600 text-white'
-              }`}
+                  ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30 hover:border-red-500/30'
+                  : 'text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200'
+              } border border-transparent hover:scale-105`}
             >
               削除
             </button>
@@ -201,7 +201,7 @@ const ContactItem = memo(({
 
 ContactItem.displayName = 'ContactItem';
 
-export const ContactList = memo(({
+const ContactList = memo(({
   contacts,
   onEdit,
   onDelete,
@@ -212,7 +212,7 @@ export const ContactList = memo(({
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {contacts.map((contact) => (
         <ContactItem
           key={contact.id}
@@ -228,4 +228,4 @@ export const ContactList = memo(({
   );
 });
 
-ContactList.displayName = 'ContactList';
+ContactList.displayName = 'ContactList';export default ContactList;

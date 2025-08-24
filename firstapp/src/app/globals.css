@@ -1,8 +1,76 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #fafafa;
   --foreground: #171717;
+  
+  /* Claude-inspired Design Tokens */
+  --spacing-1: 8px;
+  --spacing-2: 16px;
+  --spacing-3: 24px;
+  --spacing-4: 32px;
+  --spacing-5: 40px;
+  --spacing-6: 48px;
+  --spacing-8: 64px;
+  --spacing-10: 80px;
+  
+  /* Heights based on 8px grid */
+  --height-button-sm: 32px;
+  --height-button-md: 40px;
+  --height-button-lg: 48px;
+  --height-input: 42px;
+  --height-input-lg: 48px;
+  
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  
+  /* Claude Brand Colors - Light Mode */
+  --color-primary: #5d4be1;       /* Claude purple */
+  --color-primary-hover: #4a3bc8;
+  --color-accent: #6366f1;        /* Indigo accent */
+  --color-accent-hover: #5558e3;
+  
+  /* Modern Neutral Palette */
+  --color-surface: #ffffff;
+  --color-surface-hover: #f9fafb;
+  --color-surface-secondary: #f3f4f6;
+  --color-border: #e5e7eb;
+  --color-border-hover: #d1d5db;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+  
+  /* Glass Effect */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  --glass-blur: 10px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08);
+  --shadow-glow: 0 0 20px rgba(93, 75, 225, 0.15);
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-accent: linear-gradient(135deg, #5d4be1 0%, #6366f1 100%);
+  --gradient-surface: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  
+  /* Focus Ring */
+  --ring-width: 2px;
+  --ring-color: #5d4be1;
+  --ring-offset: 3px;
+  
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @theme inline {
@@ -14,8 +82,41 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f0f0f;
+    --foreground: #f5f5f5;
+    
+    /* Claude Brand Colors - Dark Mode */
+    --color-primary: #7c6ff3;
+    --color-primary-hover: #8b7ff5;
+    --color-accent: #818cf8;
+    --color-accent-hover: #9199f9;
+    
+    /* Modern Dark Palette */
+    --color-surface: #1a1a1a;
+    --color-surface-hover: #222222;
+    --color-surface-secondary: #2a2a2a;
+    --color-border: #333333;
+    --color-border-hover: #444444;
+    --color-text-primary: #f5f5f5;
+    --color-text-secondary: #a8a8a8;
+    --color-text-tertiary: #737373;
+    
+    /* Glass Effect - Dark */
+    --glass-bg: rgba(26, 26, 26, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    
+    /* Shadows - Dark */
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 0 30px rgba(124, 111, 243, 0.2);
+    
+    /* Gradients - Dark */
+    --gradient-primary: linear-gradient(135deg, #7c6ff3 0%, #9061f9 100%);
+    --gradient-accent: linear-gradient(135deg, #7c6ff3 0%, #818cf8 100%);
+    --gradient-surface: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
   }
 }
 
@@ -25,7 +126,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* カスタムアニメーション */
+/* Modern Animations */
 @keyframes slide-up {
   from {
     transform: translateY(10px);
@@ -46,6 +147,35 @@ body {
   }
 }
 
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(93, 75, 225, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px 10px rgba(93, 75, 225, 0);
+  }
+}
+
 /* スムーズなページ遷移 */
 .page-transition {
   animation: slide-up 0.3s ease-out, fade-in 0.3s ease-out;
@@ -60,12 +190,48 @@ body {
   transform: translateY(-2px);
 }
 
-/* グラデーションテキスト */
+/* Claude Signature Styles */
 .gradient-text {
-  background: linear-gradient(to right, #3b82f6, #8b5cf6);
+  background: var(--gradient-accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.glass-effect {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glow-effect {
+  box-shadow: var(--shadow-glow);
+  transition: box-shadow var(--transition-normal);
+}
+
+.glow-effect:hover {
+  box-shadow: 0 0 30px rgba(93, 75, 225, 0.3);
+}
+
+.shimmer-effect {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.smooth-shadow {
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.02),
+    0 4px 8px rgba(0, 0, 0, 0.03),
+    0 8px 16px rgba(0, 0, 0, 0.04),
+    0 16px 32px rgba(0, 0, 0, 0.05);
 }
 
 /* ダークモード対応のスクロールバー */
