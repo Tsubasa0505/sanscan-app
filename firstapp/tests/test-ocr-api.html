@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR API テスト - Google Cloud Vision</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        .content {
+            padding: 30px;
+        }
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f7f7ff;
+        }
+        .upload-area.drag-over {
+            border-color: #764ba2;
+            background: #f0f0ff;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: inline-block;
+            margin: 10px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .preview {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .preview img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .result-header {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        .result-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .result-label {
+            font-weight: 600;
+            color: #667eea;
+            display: inline-block;
+            min-width: 100px;
+        }
+        .result-value {
+            color: #333;
+        }
+        .error {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #efe;
+            color: #060;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 30px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .raw-response {
+            background: #2d2d2d;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .test-samples {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .test-sample {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .test-sample:hover {
+            background: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 OCR API テスト</h1>
+            <div class="subtitle">Google Cloud Vision API - 名刺認識</div>
+        </div>
+        
+        <div class="content">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📷</div>
+                <p style="font-size: 1.2rem; margin-bottom: 10px;">画像をドラッグ＆ドロップ</p>
+                <p style="color: #999;">または</p>
+                <button class="btn" style="margin-top: 10px;">ファイルを選択</button>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+
+            <div class="test-samples">
+                <div class="test-sample" onclick="createTestImage()">📝 テスト画像を生成</div>
+                <div class="test-sample" onclick="testWithSampleData()">🎯 サンプルデータでテスト</div>
+                <div class="test-sample" onclick="checkApiKey()">🔑 APIキー確認</div>
+            </div>
+
+            <div id="preview" class="preview" style="display: none;">
+                <img id="previewImage" alt="Preview">
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>OCR処理中...</p>
+            </div>
+
+            <div id="results" style="display: none;">
+                <div class="result-section">
+                    <div class="result-header">📋 解析結果</div>
+                    <div id="parsedResults"></div>
+                </div>
+
+                <div class="result-section">
+                    <div class="result-header">🔧 生データ</div>
+                    <div class="raw-response" id="rawResponse"></div>
+                </div>
+            </div>
+
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const previewImage = document.getElementById('previewImage');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const messages = document.getElementById('messages');
+
+        // ドラッグ＆ドロップ
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        async function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showMessage('画像ファイルを選択してください', 'error');
+                return;
+            }
+
+            // プレビュー表示
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // OCR処理
+            await performOCR(file);
+        }
+
+        async function performOCR(file) {
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            messages.innerHTML = '';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('http://localhost:3010/api/ocr/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                console.log('OCR Response:', data);
+                
+                displayResults(data);
+            } catch (error) {
+                console.error('OCR Error:', error);
+                showMessage(`エラー: ${error.message}`, 'error');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResults(data) {
+            results.style.display = 'block';
+            
+            // 生データ表示
+            document.getElementById('rawResponse').textContent = JSON.stringify(data, null, 2);
+            
+            // 解析結果表示
+            const parsedResults = document.getElementById('parsedResults');
+            parsedResults.innerHTML = '';
+
+            if (data.success) {
+                showMessage('OCR処理が成功しました！', 'success');
+                
+                if (data.contact) {
+                    const fields = [
+                        { label: '名前', value: data.contact.fullName },
+                        { label: 'メール', value: data.contact.email },
+                        { label: '電話番号', value: data.contact.phone },
+                        { label: '会社名', value: data.contact.company },
+                        { label: '役職', value: data.contact.position },
+                        { label: 'メモ', value: data.contact.memo }
+                    ];
+
+                    fields.forEach(field => {
+                        if (field.value) {
+                            const item = document.createElement('div');
+                            item.className = 'result-item';
+                            item.innerHTML = `
+                                <span class="result-label">${field.label}:</span>
+                                <span class="result-value">${field.value}</span>
+                            `;
+                            parsedResults.appendChild(item);
+                        }
+                    });
+                }
+
+                if (data.rawText) {
+                    const item = document.createElement('div');
+                    item.className = 'result-item';
+                    item.innerHTML = `
+                        <span class="result-label">抽出テキスト:</span>
+                        <div style="margin-top: 10px; white-space: pre-wrap;">${data.rawText}</div>
+                    `;
+                    parsedResults.appendChild(item);
+                }
+            } else {
+                showMessage(`エラー: ${data.error || 'OCR処理に失敗しました'}`, 'error');
+                
+                if (data.instructions) {
+                    const item = document.createElement('div');
+                    item.className = 'result-item';
+                    item.innerHTML = `
+                        <span class="result-label">設定方法:</span>
+                        <div style="margin-top: 10px; white-space: pre-wrap;">${data.instructions}</div>
+                    `;
+                    parsedResults.appendChild(item);
+                }
+            }
+
+            if (data.businessCardUrl) {
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                item.innerHTML = `
+                    <span class="result-label">保存場所:</span>
+                    <span class="result-value">${data.businessCardUrl}</span>
+                `;
+                parsedResults.appendChild(item);
+            }
+        }
+
+        function showMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = text;
+            messages.appendChild(div);
+        }
+
+        // テスト画像生成
+        function createTestImage() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 250;
+            const ctx = canvas.getContext('2d');
+            
+            // 背景
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, 400, 250);
+            
+            // テキスト
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('山田 太郎', 50, 60);
+            
+            ctx.font = '16px Arial';
+            ctx.fillText('営業部長', 50, 90);
+            ctx.fillText('株式会社テスト', 50, 120);
+            ctx.fillText('yamada@test.co.jp', 50, 150);
+            ctx.fillText('090-1234-5678', 50, 180);
+            
+            canvas.toBlob((blob) => {
+                const file = new File([blob], 'test-card.png', { type: 'image/png' });
+                handleFile(file);
+            });
+        }
+
+        // サンプルデータでテスト
+        async function testWithSampleData() {
+            const sampleText = `山田 太郎
+営業部長
+株式会社サンプル
+yamada@sample.co.jp
+03-1234-5678`;
+            
+            const blob = new Blob([sampleText], { type: 'text/plain' });
+            const file = new File([blob], 'sample.txt', { type: 'text/plain' });
+            
+            // テキストファイルを画像として送信（APIのテスト用）
+            await performOCR(file);
+        }
+
+        // APIキー確認
+        async function checkApiKey() {
+            try {
+                const response = await fetch('http://localhost:3010/api/ocr/upload', {
+                    method: 'GET'
+                });
+                const text = await response.text();
+                showMessage('APIエンドポイントに接続しました', 'success');
+            } catch (error) {
+                showMessage(`APIエンドポイントへの接続に失敗: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

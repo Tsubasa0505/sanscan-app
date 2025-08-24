@@ -1,0 +1,348 @@
+/**
+ * 文字エンコーディング保証のためのCSS
+ * ブラウザ間互換性とフォント対応
+ */
+
+/* フォント設定の階層化とフォールバック */
+:root {
+  /* 日本語フォントのカスケード定義 */
+  --font-family-japanese: 
+    'Noto Sans JP',
+    'Hiragino Kaku Gothic ProN',
+    'Hiragino Sans',
+    'Yu Gothic Medium',
+    'Yu Gothic',
+    'Meiryo',
+    'MS PGothic',
+    'MS Gothic',
+    sans-serif;
+
+  /* 英数字フォント */
+  --font-family-latin:
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+
+  /* モノスペースフォント */
+  --font-family-mono:
+    'SF Mono',
+    Monaco,
+    'Inconsolata',
+    'Roboto Mono',
+    'Source Code Pro',
+    Consolas,
+    'MS Gothic',
+    monospace;
+
+  /* 文字サイズの基準値 */
+  --font-size-base: 16px;
+  --line-height-base: 1.6;
+
+  /* 文字間隔の調整 */
+  --letter-spacing-normal: 0.02em;
+  --letter-spacing-wide: 0.05em;
+}
+
+/* 全体のベース設定 */
+* {
+  /* フォントのスムージング設定 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* テキストレンダリングの最適化 */
+  text-rendering: optimizeLegibility;
+  
+  /* フォント機能の制御（合字を無効化して文字化け防止） */
+  font-feature-settings: "liga" 0, "clig" 0, "calt" 0;
+  
+  /* 文字の向きを正常に保つ */
+  text-orientation: mixed;
+  writing-mode: horizontal-tb;
+}
+
+/* HTML要素の基本設定 */
+html {
+  /* 文字エンコーディングの明示 */
+  font-family: var(--font-family-japanese);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  
+  /* 日本語の文字間隔調整 */
+  letter-spacing: var(--letter-spacing-normal);
+  
+  /* ハイフネーション（日本語では無効化） */
+  hyphens: none;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Body要素 */
+body {
+  font-family: var(--font-family-japanese);
+  
+  /* 文字の方向設定 */
+  direction: ltr;
+  unicode-bidi: embed;
+  
+  /* フォントの変形防止 */
+  font-synthesis: none;
+  
+  /* サブピクセルレンダリング */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 日本語テキスト専用クラス */
+.text-japanese {
+  font-family: var(--font-family-japanese);
+  font-feature-settings: "palt" 1; /* プロポーショナル文字詰め */
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+/* 英語テキスト専用クラス */
+.text-latin {
+  font-family: var(--font-family-latin);
+  letter-spacing: 0;
+}
+
+/* モノスペース（コード）テキスト */
+.text-mono, pre, code {
+  font-family: var(--font-family-mono);
+  font-feature-settings: "liga" 0, "clig" 0;
+  letter-spacing: 0;
+}
+
+/* 見出し要素 */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-japanese);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-wide);
+  
+  /* 文字の安定化 */
+  font-synthesis: weight;
+  text-rendering: optimizeLegibility;
+}
+
+/* フォーム要素 */
+input, textarea, select, button {
+  font-family: var(--font-family-japanese);
+  font-size: inherit;
+  
+  /* プレースホルダーの文字化け防止 */
+  font-synthesis: none;
+}
+
+input::placeholder, textarea::placeholder {
+  font-family: var(--font-family-japanese);
+  opacity: 0.6;
+}
+
+/* 特殊文字の表示調整 */
+.unicode-safe {
+  /* Unicode文字の安全な表示 */
+  font-variant-numeric: normal;
+  font-variant-ligatures: none;
+  
+  /* 絵文字の適切な表示 */
+  font-family: 
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Noto Color Emoji',
+    'Twemoji',
+    var(--font-family-japanese);
+}
+
+/* 文字化け検出時のスタイル */
+.encoding-error {
+  background-color: #fee2e2;
+  color: #dc2626;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: var(--font-family-mono);
+  font-size: 0.875em;
+}
+
+.encoding-warning {
+  background-color: #fef3c7;
+  color: #d97706;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #f59e0b;
+}
+
+/* レスポンシブなフォントサイズ */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+  
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+  h4 { font-size: 1.125rem; }
+  h5 { font-size: 1rem; }
+  h6 { font-size: 0.875rem; }
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+/* 印刷時の文字化け対策 */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+  
+  body {
+    font-family: 'Times New Roman', 'Yu Mincho', 'MS Mincho', serif;
+  }
+}
+
+/* 高コントラストモード対応 */
+@media (prefers-contrast: high) {
+  .encoding-safe {
+    text-shadow: none;
+    font-weight: 500;
+  }
+}
+
+/* 縮小モーション設定時 */
+@media (prefers-reduced-motion: reduce) {
+  .encoding-safe * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* WebKit系ブラウザの調整 */
+@supports (-webkit-appearance: none) {
+  .webkit-font-fix {
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+}
+
+/* Firefox固有の調整 */
+@-moz-document url-prefix() {
+  .firefox-font-fix {
+    -moz-osx-font-smoothing: auto;
+  }
+}
+
+/* Safari固有の調整 */
+@supports (-webkit-touch-callout: none) {
+  .safari-font-fix {
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Edge固有の調整 */
+@supports (-ms-ime-align: auto) {
+  .edge-font-fix {
+    -ms-text-size-adjust: 100%;
+  }
+}
+
+/* 古いブラウザ向けのフォールバック */
+.fallback-fonts {
+  font-family: 
+    'Hiragino Kaku Gothic ProN',
+    'Hiragino Sans',
+    'Yu Gothic',
+    'Meiryo',
+    'Takao PGothic',
+    'VL PGothic',
+    'MotoyaLCedar',
+    'Droid Sans Japanese',
+    sans-serif;
+}
+
+/* 文字サイズの段階的スケール */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.text-xl { font-size: 1.25rem; }
+.text-2xl { font-size: 1.5rem; }
+.text-3xl { font-size: 1.875rem; }
+.text-4xl { font-size: 2.25rem; }
+.text-5xl { font-size: 3rem; }
+
+/* 行間の調整 */
+.leading-tight { line-height: 1.25; }
+.leading-normal { line-height: 1.5; }
+.leading-relaxed { line-height: 1.625; }
+.leading-loose { line-height: 2; }
+
+/* 文字間隔の調整 */
+.tracking-tight { letter-spacing: -0.025em; }
+.tracking-normal { letter-spacing: 0; }
+.tracking-wide { letter-spacing: 0.025em; }
+.tracking-wider { letter-spacing: 0.05em; }
+.tracking-widest { letter-spacing: 0.1em; }
+
+/* 日本語特有の調整クラス */
+.japanese-punctuation {
+  /* 句読点の処理 */
+  hanging-punctuation: allow-end;
+}
+
+.japanese-vertical {
+  /* 縦書き対応（必要に応じて） */
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* アクセシビリティ対応 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* フォントローディング中のスタイル */
+.font-loading {
+  font-display: swap;
+  visibility: hidden;
+}
+
+.font-loaded {
+  visibility: visible;
+  transition: visibility 0s, opacity 0.3s;
+}
+
+/* デバッグ用（開発時のみ使用） */
+.debug-encoding {
+  outline: 1px dashed red;
+  position: relative;
+}
+
+.debug-encoding::before {
+  content: "Encoding Debug";
+  position: absolute;
+  top: -20px;
+  left: 0;
+  background: red;
+  color: white;
+  font-size: 10px;
+  padding: 2px 4px;
+  z-index: 9999;
+}

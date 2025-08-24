@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0070f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0051cc;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        #preview {
+            max-width: 300px;
+            margin: 10px 0;
+        }
+        #preview img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>OCR API テスト</h1>
+    
+    <div class="test-section">
+        <h2>画像ファイルアップロード</h2>
+        <input type="file" id="fileInput" accept="image/*">
+        <div id="preview"></div>
+        <button onclick="testOCR()">OCRテスト実行</button>
+        <button onclick="clearResult()">結果をクリア</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // ファイル選択時のプレビュー表示
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('preview');
+            
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = '';
+            }
+        });
+
+        async function testOCR() {
+            const fileInput = document.getElementById('fileInput');
+            const resultDiv = document.getElementById('result');
+            
+            if (!fileInput.files[0]) {
+                resultDiv.innerHTML = '<p class="error">画像ファイルを選択してください</p>';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            resultDiv.innerHTML = '<p>OCR処理中...</p>';
+            
+            try {
+                console.log('Sending OCR request...');
+                const response = await fetch('http://localhost:3002/api/ocr/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ OCR処理成功！</p>
+                        <h3>抽出された情報:</h3>
+                        <ul>
+                            <li><strong>名前:</strong> ${data.extractedData?.fullName || '未検出'}</li>
+                            <li><strong>メール:</strong> ${data.extractedData?.email || '未検出'}</li>
+                            <li><strong>電話:</strong> ${data.extractedData?.phone || '未検出'}</li>
+                            <li><strong>会社:</strong> ${data.extractedData?.company || '未検出'}</li>
+                            <li><strong>役職:</strong> ${data.extractedData?.position || '未検出'}</li>
+                            <li><strong>住所:</strong> ${data.extractedData?.address || '未検出'}</li>
+                        </ul>
+                        <h3>OCR品質:</h3>
+                        <ul>
+                            <li><strong>レベル:</strong> ${data.ocrQuality?.level || '不明'}</li>
+                            <li><strong>信頼度:</strong> ${data.ocrQuality?.confidence ? (data.ocrQuality.confidence * 100).toFixed(1) + '%' : '不明'}</li>
+                        </ul>
+                        <h3>保存された画像:</h3>
+                        <p><a href="${data.businessCardUrl}" target="_blank">${data.businessCardUrl}</a></p>
+                        <h3>作成された連絡先:</h3>
+                        <p>ID: ${data.contact?.id}</p>
+                        <details>
+                            <summary>詳細データ</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ エラーが発生しました</p>
+                        <p>エラー内容: ${data.error || 'Unknown error'}</p>
+                        ${data.message ? `<p>${data.message}</p>` : ''}
+                        ${data.businessCardUrl ? `<p>保存された画像: <a href="${data.businessCardUrl}" target="_blank">${data.businessCardUrl}</a></p>` : ''}
+                        <details>
+                            <summary>詳細データ</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <p class="error">❌ ネットワークエラー</p>
+                    <p>エラー内容: ${error.message}</p>
+                    <p>コンソールで詳細を確認してください（F12キー）</p>
+                `;
+            }
+        }
+        
+        function clearResult() {
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('preview').innerHTML = '';
+            document.getElementById('fileInput').value = '';
+        }
+    </script>
+</body>
+</html>

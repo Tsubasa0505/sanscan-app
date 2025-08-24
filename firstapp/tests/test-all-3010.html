@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポート3010 総合テスト</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            color: #444;
+            margin-top: 0;
+        }
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.delete {
+            background: #f44336;
+        }
+        button.delete:hover {
+            background: #da190b;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #ddd;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            background: #e8f5e9;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        .info {
+            border-left-color: #2196F3;
+            background: #e3f2fd;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        input[type="text"], input[type="email"], input[type="tel"], input[type="file"] {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-success { background: #4CAF50; }
+        .status-error { background: #f44336; }
+        .status-pending { background: #FFC107; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #preview img {
+            max-width: 200px;
+            height: auto;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 ポート3010 総合テスト</h1>
+    
+    <!-- サーバー状態確認 -->
+    <div class="test-section">
+        <h2>1. サーバー状態確認</h2>
+        <button onclick="checkServerStatus()">サーバー状態を確認</button>
+        <div id="server-status" class="result"></div>
+    </div>
+
+    <!-- 連絡先API テスト -->
+    <div class="test-section">
+        <h2>2. 連絡先API テスト</h2>
+        <div class="test-grid">
+            <div>
+                <h3>GET（一覧取得）</h3>
+                <button onclick="testGetContacts()">連絡先一覧を取得</button>
+                <div id="get-result" class="result"></div>
+            </div>
+            <div>
+                <h3>POST（新規作成）</h3>
+                <input type="text" id="new-name" placeholder="名前" value="テスト太郎">
+                <input type="email" id="new-email" placeholder="メール" value="test@example.com">
+                <input type="tel" id="new-phone" placeholder="電話番号" value="090-1234-5678">
+                <input type="text" id="new-company" placeholder="会社名" value="テスト株式会社">
+                <button onclick="testCreateContact()">連絡先を作成</button>
+                <div id="post-result" class="result"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OCR機能テスト -->
+    <div class="test-section">
+        <h2>3. OCR機能テスト</h2>
+        <input type="file" id="ocr-file" accept="image/*">
+        <div id="preview"></div>
+        <button onclick="testOCR()">OCRテスト実行</button>
+        <div id="ocr-result" class="result"></div>
+    </div>
+
+    <!-- データベース確認 -->
+    <div class="test-section">
+        <h2>4. データベース統計</h2>
+        <button onclick="getDBStats()">データベース統計を取得</button>
+        <div id="db-stats" class="result"></div>
+    </div>
+
+    <!-- ページアクセステスト -->
+    <div class="test-section">
+        <h2>5. ページアクセステスト</h2>
+        <button onclick="testAllPages()">全ページをテスト</button>
+        <div id="page-test-result" class="result"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:3010';
+
+        // サーバー状態確認
+        async function checkServerStatus() {
+            const resultDiv = document.getElementById('server-status');
+            resultDiv.innerHTML = '<p>確認中...</p>';
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/contacts`);
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <span class="status-indicator status-success"></span>
+                        <strong>✅ サーバーは正常に動作しています</strong>
+                        <p>ポート: 3010</p>
+                        <p>ステータス: ${response.status} ${response.statusText}</p>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <span class="status-indicator status-error"></span>
+                    <strong>❌ サーバーに接続できません</strong>
+                    <p>エラー: ${error.message}</p>
+                `;
+            }
+        }
+
+        // 連絡先一覧取得
+        async function testGetContacts() {
+            const resultDiv = document.getElementById('get-result');
+            resultDiv.innerHTML = '<p>取得中...</p>';
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/contacts`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    let html = `<strong>✅ 取得成功</strong><br>`;
+                    html += `<p>総件数: ${data.pagination?.total || 0}件</p>`;
+                    
+                    if (data.data && data.data.length > 0) {
+                        html += '<table>';
+                        html += '<tr><th>名前</th><th>メール</th><th>会社</th></tr>';
+                        data.data.slice(0, 5).forEach(contact => {
+                            html += `<tr>
+                                <td>${contact.fullName}</td>
+                                <td>${contact.email || '-'}</td>
+                                <td>${contact.company?.name || '-'}</td>
+                            </tr>`;
+                        });
+                        html += '</table>';
+                        if (data.data.length > 5) {
+                            html += `<p>...他 ${data.data.length - 5} 件</p>`;
+                        }
+                    }
+                    resultDiv.innerHTML = html;
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>❌ エラー</strong><br>${error.message}`;
+            }
+        }
+
+        // 連絡先作成
+        async function testCreateContact() {
+            const resultDiv = document.getElementById('post-result');
+            resultDiv.innerHTML = '<p>作成中...</p>';
+            
+            const contactData = {
+                fullName: document.getElementById('new-name').value,
+                email: document.getElementById('new-email').value,
+                phone: document.getElementById('new-phone').value,
+                company: document.getElementById('new-company').value,
+                position: '営業部長',
+                notes: 'テストで作成'
+            };
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/contacts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(contactData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ 作成成功</strong>
+                        <p>ID: ${data.id}</p>
+                        <p>名前: ${data.fullName}</p>
+                        <p>会社: ${data.company?.name || '未設定'}</p>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>❌ エラー</strong><br>${error.message}`;
+            }
+        }
+
+        // OCRテスト
+        document.getElementById('ocr-file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('preview');
+            
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function testOCR() {
+            const fileInput = document.getElementById('ocr-file');
+            const resultDiv = document.getElementById('ocr-result');
+            
+            if (!fileInput.files[0]) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<strong>❌ 画像を選択してください</strong>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>OCR処理中...</p>';
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/ocr/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ OCR成功</strong>
+                        <table>
+                            <tr><th>項目</th><th>抽出データ</th></tr>
+                            <tr><td>名前</td><td>${data.extractedData?.fullName || '-'}</td></tr>
+                            <tr><td>メール</td><td>${data.extractedData?.email || '-'}</td></tr>
+                            <tr><td>電話</td><td>${data.extractedData?.phone || '-'}</td></tr>
+                            <tr><td>会社</td><td>${data.extractedData?.company || '-'}</td></tr>
+                            <tr><td>役職</td><td>${data.extractedData?.position || '-'}</td></tr>
+                            <tr><td>住所</td><td>${data.extractedData?.address || '-'}</td></tr>
+                        </table>
+                        <p>OCR品質: ${data.ocrQuality?.level || '不明'}</p>
+                    `;
+                } else {
+                    resultDiv.className = 'result info';
+                    resultDiv.innerHTML = `
+                        <strong>⚠️ OCR利用不可</strong>
+                        <p>${data.message || data.error}</p>
+                        ${data.instructions ? `<p>設定方法: ${data.instructions}</p>` : ''}
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>❌ エラー</strong><br>${error.message}`;
+            }
+        }
+
+        // データベース統計
+        async function getDBStats() {
+            const resultDiv = document.getElementById('db-stats');
+            resultDiv.innerHTML = '<p>取得中...</p>';
+            
+            try {
+                // 連絡先の統計を取得
+                const contactsResponse = await fetch(`${BASE_URL}/api/contacts`);
+                const contactsData = await contactsResponse.json();
+                
+                if (contactsResponse.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ データベース統計</strong>
+                        <table>
+                            <tr><th>項目</th><th>件数</th></tr>
+                            <tr><td>連絡先総数</td><td>${contactsData.pagination?.total || 0}件</td></tr>
+                            <tr><td>会社数</td><td>${new Set(contactsData.data?.map(c => c.company?.id).filter(Boolean)).size || 0}件</td></tr>
+                            <tr><td>メールあり</td><td>${contactsData.data?.filter(c => c.email).length || 0}件</td></tr>
+                            <tr><td>電話番号あり</td><td>${contactsData.data?.filter(c => c.phone).length || 0}件</td></tr>
+                        </table>
+                    `;
+                } else {
+                    throw new Error('データベース統計の取得に失敗');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>❌ エラー</strong><br>${error.message}`;
+            }
+        }
+
+        // 全ページテスト
+        async function testAllPages() {
+            const resultDiv = document.getElementById('page-test-result');
+            resultDiv.innerHTML = '<p>テスト中...</p>';
+            
+            const pages = [
+                { name: 'トップページ', url: '/' },
+                { name: 'ダッシュボード', url: '/dashboard' },
+                { name: '連絡先一覧', url: '/contacts' },
+                { name: '連絡先API', url: '/api/contacts' },
+                { name: 'OCR API', url: '/api/ocr/upload', method: 'POST' }
+            ];
+            
+            let results = '<strong>ページアクセステスト結果</strong><table>';
+            results += '<tr><th>ページ</th><th>URL</th><th>状態</th></tr>';
+            
+            for (const page of pages) {
+                try {
+                    let response;
+                    if (page.method === 'POST') {
+                        // POSTメソッドの場合は適切なリクエストを送る
+                        const formData = new FormData();
+                        response = await fetch(`${BASE_URL}${page.url}`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                    } else {
+                        response = await fetch(`${BASE_URL}${page.url}`);
+                    }
+                    
+                    const statusIcon = response.ok || response.status === 400 ? '✅' : '❌';
+                    const statusClass = response.ok || response.status === 400 ? 'status-success' : 'status-error';
+                    
+                    results += `<tr>
+                        <td>${page.name}</td>
+                        <td>${page.url}</td>
+                        <td><span class="status-indicator ${statusClass}"></span>${statusIcon} ${response.status}</td>
+                    </tr>`;
+                } catch (error) {
+                    results += `<tr>
+                        <td>${page.name}</td>
+                        <td>${page.url}</td>
+                        <td><span class="status-indicator status-error"></span>❌ エラー</td>
+                    </tr>`;
+                }
+            }
+            
+            results += '</table>';
+            resultDiv.className = 'result info';
+            resultDiv.innerHTML = results;
+        }
+
+        // 初期実行
+        window.onload = function() {
+            checkServerStatus();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npm install)",
+      "Bash(git add:*)",
+      "Bash(npm install:*)",
+      "Bash(dir)",
+      "Bash(git init:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\mnt\\c\\myapps"
+    ]
+  }
+}

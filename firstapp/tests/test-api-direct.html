@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Direct Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        pre { background: #f0f0f0; padding: 10px; overflow: auto; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>連絡先API直接テスト</h1>
+    <button onclick="testAPI()">APIテスト実行</button>
+    <button onclick="testUI()">UI画面を開く</button>
+    
+    <h2>結果:</h2>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>テスト中...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:3010/api/contacts?page=1&limit=5', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <p class="success">✓ APIアクセス成功</p>
+                    <p>データ件数: ${data.data ? data.data.length : 0}</p>
+                    <p>総件数: ${data.pagination ? data.pagination.total : 0}</p>
+                    <h3>データ内容:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">✗ エラー: ${error.message}</p>
+                    <p>サーバーが起動していない可能性があります。</p>
+                    <p>コマンド: npm run dev</p>
+                `;
+            }
+        }
+        
+        function testUI() {
+            window.open('http://localhost:3010/contacts', '_blank');
+        }
+        
+        // ページ読み込み時に自動テスト
+        window.onload = () => {
+            testAPI();
+        };
+    </script>
+</body>
+</html>

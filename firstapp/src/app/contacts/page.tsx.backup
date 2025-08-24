@@ -1,0 +1,2218 @@
+"use client";
+import { useEffect, useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useToast } from "@/contexts/ToastContext";
+import Image from "next/image";
+import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
+
+type Contact = {
+  id: string;
+  fullName: string;
+  email?: string;
+  phone?: string;
+  position?: string;
+  notes?: string;
+  company?: { name: string | null };
+  businessCardImage?: string | null;
+  profileImage?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export default function ContactsPage() {
+  const [data, setData] = useState<Contact[]>([]);
+  const [filteredData, setFilteredData] = useState<Contact[]>([]);
+  const [form, setForm] = useState({
+    fullName: "", email: "", phone: "", position: "", companyName: "", notes: "", businessCardImage: "", profileImage: ""
+  });
+  const [editForm, setEditForm] = useState({
+    id: "", fullName: "", email: "", phone: "", position: "", companyName: "", notes: "", businessCardImage: "", profileImage: ""
+  });
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchDebounceTimer, setSearchDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<{successCount: number, errorCount: number, errors: string[]} | null>(null);
+  
+  // ページネーション用の状態
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageSize] = useState(20);
+  const [isLoadingPage, setIsLoadingPage] = useState(false);
+  
+  // 高度な検索・フィルタ用の状態
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [filters, setFilters] = useState({
+    name: "",
+    company: "",
+    position: "",
+    email: "",
+    hasPhone: false,
+    hasEmail: false,
+    hasNotes: false,
+    hasBusinessCard: false
+  });
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  
+  // ダークモード用の状態
+  const { isDarkMode, toggleDarkMode } = useTheme();
+  const { showToast } = useToast();
+  
+  // 一括メール送信用の状態
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [showBulkEmailModal, setShowBulkEmailModal] = useState(false);
+  const [bulkEmailForm, setBulkEmailForm] = useState({
+    subject: "",
+    content: "",
+    template: ""
+  });
+  
+  // OCR用の状態
+  const [showOcrModal, setShowOcrModal] = useState(false);
+  const [ocrFile, setOcrFile] = useState<File | null>(null);
+  const [ocrResult, setOcrResult] = useState<{ fullName?: string; company?: string; email?: string; phone?: string; department?: string; position?: string; address?: string } | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+
+  const loadContacts = async (page = 1, search = "", companyFilter = "", importanceFilter = null, sort = sortBy, order = sortOrder, hasBusinessCard = null, retryCount = 0) => {
+    setIsLoadingPage(true);
+    if (search) setIsSearching(true);
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: pageSize.toString(),
+        sortBy: sort,
+        sortOrder: order
+      });
+      
+      if (search) params.append('search', search);
+      if (companyFilter) params.append('company', companyFilter);
+      if (importanceFilter) params.append('importance', importanceFilter.toString());
+      if (hasBusinessCard !== null) params.append('hasBusinessCard', hasBusinessCard ? '1' : '0');
+      
+      const res = await fetch(`/api/contacts?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // キャッシュ制御
+        cache: 'no-cache',
+      });
+      if (!res.ok) {
+        throw new Error(`API Error: ${res.status}`);
+      }
+      
+      const result = await res.json();
+      
+      // データの検証
+      if (!result || !result.data) {
+        throw new Error('Invalid response format');
+      }
+      
+      setData(result.data);
+      setFilteredData(result.data);
+      setCurrentPage(result.pagination.page);
+      setTotalPages(result.pagination.totalPages);
+      setTotalCount(result.pagination.total);
+      
+      // 検索結果が0件の場合の通知
+      if (search && result.data.length === 0) {
+        showToast('info', '検索結果なし', `「${search}」に一致する連絡先が見つかりませんでした`);
+      }
+    } catch (error) {
+      console.error('Load contacts error:', error);
+      
+      // リトライ処理
+      if (retryCount < 2) {
+        setTimeout(() => {
+          loadContacts(page, search, companyFilter, importanceFilter, sort, order, hasBusinessCard, retryCount + 1);
+        }, 1000 * (retryCount + 1));
+        showToast('warning', '読み込み中...', 'データを再取得しています');
+      } else {
+        showToast('error', 'データ取得エラー', 'データの取得に失敗しました。ページを更新してください');
+        // エラー時でも空配列をセット
+        setData([]);
+        setFilteredData([]);
+        setTotalCount(0);
+        setTotalPages(0);
+      }
+    } finally {
+      setIsLoadingPage(false);
+      setIsSearching(false);
+    }
+  }
+
+  useEffect(() => { 
+    loadContacts(1, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null); 
+  }, []);
+
+  // 連絡先選択の管理  const handleSelectContact = (contactId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedContacts(prev => [...prev, contactId]);
+    } else {
+      setSelectedContacts(prev => prev.filter(id => id !== contactId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedContacts(filteredData.map(contact => contact.id));
+    } else {
+      setSelectedContacts([]);
+    }
+  };
+
+  // 一括メール送信
+  const sendBulkEmail = async () => {
+    if (selectedContacts.length === 0) {
+      showToast('warning', '送信先未選択', '送信先を選択してください');
+      return;
+    }
+    
+    if (!bulkEmailForm.subject || !bulkEmailForm.content) {
+      showToast('warning', '入力エラー', '件名と本文を入力してください');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await fetch('/api/email/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contactIds: selectedContacts,
+          subject: bulkEmailForm.subject,
+          content: bulkEmailForm.content
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'メール送信に失敗しました');
+      }
+      
+      const result = await response.json();
+      showToast('success', 'メール送信完了', `${result.successCount}件のメールを送信しました${result.failureCount > 0 ? `（${result.failureCount}件失敗）` : ''}`);
+      
+      setShowBulkEmailModal(false);
+      setSelectedContacts([]);
+      setBulkEmailForm({ subject: "", content: "", template: "" });
+    } catch (error) {
+      showToast('error', 'メール送信エラー', error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // テンプレート適用
+  const applyEmailTemplate = async (templateId: string) => {
+    try {
+      const response = await fetch('/api/email/send');
+      const templates = await response.json();
+      const template = templates.find((t) => t.id === templateId);
+      
+      if (template) {
+        setBulkEmailForm({
+          ...bulkEmailForm,
+          subject: template.subject,
+          content: template.content,
+          template: templateId
+        });
+      }
+    } catch (error) {
+    }
+  };
+
+  // 複数OCR処理：複数画像を同時に自動実行版
+  const processMultipleOcrAuto = async (files: File[]) => {
+    // 即座にモーダルを閉じて処理開始
+    setShowOcrModal(false);
+    setOcrLoading(true);
+    showToast('info', '一括スキャン開始', `${files.length}枚の名刺をOCR処理しています。完了したら自動で一覧に追加されます。`);
+    
+    // ファイル状態をクリア
+    setOcrFile(null);
+    setOcrResult(null);
+    
+    let successCount = 0;
+    let failCount = 0;
+    const processedFiles: string[] = [];
+    
+    try {
+      // 複数ファイルを並列処理
+      const promises = files.map(async (file) => {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const response = await fetch('/api/ocr/upload', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok && result.contact) {
+            successCount++;
+            processedFiles.push(result.contact.fullName || file.name);
+            
+            // OCR品質情報をログ出力
+            const qualityInfo = result.ocrQuality ? 
+              `(品質: ${result.ocrQuality.level}, 信頼度: ${result.ocrQuality.confidence?.toFixed(2) || 'N/A'})` : 
+              '';
+            
+            return { success: true, contact: result.contact, fileName: file.name, quality: result.ocrQuality };
+          } else {
+            failCount++;
+            return { success: false, error: result.error, fileName: file.name };
+          }
+        } catch (error) {
+          failCount++;
+          return { success: false, error: error instanceof Error ? error.message : String(error), fileName: file.name };
+        }
+      });
+      
+      // すべての処理を並列実行
+      await Promise.all(promises);
+      
+      // 結果のトースト表示
+      if (successCount > 0 && failCount === 0) {
+        showToast('success', '✅ 一括OCR完了', `${successCount}枚すべて正常に登録されました`);
+      } else if (successCount > 0 && failCount > 0) {
+        showToast('warning', '⚠️ 一括OCR完了（一部失敗）', `成功: ${successCount}枚、失敗: ${failCount}枚`);
+      } else {
+        showToast('error', '❌ 一括OCR失敗', `${failCount}枚すべて失敗しました`);
+      }
+      
+      // リストを自動更新（バックグラウンドで実行）
+      if (successCount > 0) {
+        loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null);
+      }
+      
+    } catch (error) {
+      showToast('error', '❌一括OCRエラー', error instanceof Error ? error.message : String(error));
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  // OCR処理：画像選択と同時に自動実行版
+  const processOcrAuto = async (file: File) => {
+    // 複数処理関数を使用して単一ファイルを処理
+    return processMultipleOcrAuto([file]);
+  };
+
+  // 旧来の単一OCR処理関数（互換性のため残す）
+  const processOcrAutoSingle = async (file: File) => {
+    // 即座にモーダルを閉じて処理開始
+    setShowOcrModal(false);
+    setOcrLoading(true);
+    showToast('info', 'スキャン開始', '名刺をOCR処理しています。完了したら自動で一覧に追加されます。');
+    
+    // バックグラウンドで処理を実行
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // ファイル状態をクリア
+    setOcrFile(null);
+    setOcrResult(null);
+    
+    try {
+      const response = await fetch('/api/ocr/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        if (result.contact) {
+          // OCR成功 - 自動登録完了
+          showToast('success', '✓ OCR完了', `${result.contact.fullName} さんを自動登録しました`);
+          // リストを自動更新（バックグラウンドで）          loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null);
+        } else if (result.ocrEnabled === false || result.success === false) {
+          // OCRが失敗した場合、手動入力フォームを表示
+          setEditForm({
+            id: '',
+            fullName: '',
+            email: '',
+            phone: '',
+            position: '',
+            companyName: '',
+            notes: '',
+            businessCardImage: result.businessCardUrl,
+            profileImage: ''
+          });
+          setShowEditModal(true);
+          showToast('warning', '⚠️ 手動入力が必要', '文字を認識できませんでした。情報を手動で入力してください。');
+        }
+      } else {
+        throw new Error(result.error || 'OCR処理に失敗しました');
+      }
+    } catch (error) {
+      showToast('error', '❌OCRエラー', error instanceof Error ? error.message : String(error));
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  // 検索実行（即座に実行）
+  const handleSearch = (searchValue = searchTerm) => {
+    setCurrentPage(1);
+    // 検索中インジケータを表示
+    if (searchValue) {
+      showToast('info', '検索中...', `「${searchValue}」を検索しています`, 2000);
+    }
+    loadContacts(1, searchValue, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null);
+  };
+
+  // ページ変更ハンドラー
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      loadContacts(page, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null);
+    }
+  };
+
+  // ソート変更ハンドラー
+  const handleSortChange = (newSortBy: string, newSortOrder: "asc" | "desc") => {
+    setSortBy(newSortBy);
+    setSortOrder(newSortOrder);
+    setCurrentPage(1);
+    loadContacts(1, searchTerm, filters.company, filters.hasPhone ? 1 : null, newSortBy, newSortOrder, filters.hasBusinessCard ? 1 : null);
+  };
+
+  // 検索とフィルタリング（デバウンス処理付き）
+  useEffect(() => {
+    // 検索中フラグをセット
+    if (searchTerm) setIsSearching(true);
+    
+    const timeoutId = setTimeout(() => {
+      if (searchTerm !== "" || Object.values(filters).some(v => v !== "" && v !== false)) {
+        handleSearch();
+      } else {
+        // 検索条件が空の場合、全件表示
+        loadContacts(1, "", "", null, sortBy, sortOrder, null);
+      }
+    }, 300); // デバウンス: 300ms後に検索実行（高速化）
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, filters]);
+
+  // フィルタリングロジックを削除（APIで処理）
+  useEffect(() => {
+    setFilteredData(data);
+  }, [data]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.fullName.trim()) return alert("名前は必須です");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setForm({ fullName: "", email: "", phone: "", position: "", companyName: "", notes: "", businessCardImage: "", profileImage: "" });
+      await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder);
+      showToast('success', '保存完了', '連絡先を追加しました');
+    } catch (err) {
+      showToast('error', '保存失敗', err instanceof Error ? err.message : String(err));
+    } finally { setLoading(false); }
+  };
+
+  // 編集モーダルを開く
+  const openEditModal = (contact: Contact) => {
+    setEditForm({
+      id: contact.id,
+      fullName: contact.fullName,
+      email: contact.email || "",
+      phone: contact.phone || "",
+      position: contact.position || "",
+      companyName: contact.company?.name || "",
+      notes: contact.notes || "",
+      businessCardImage: contact.businessCardImage || "",
+      profileImage: contact.profileImage || ""
+    });
+    setShowEditModal(true);
+  };
+
+  // 編集・新規作成を保存
+  const saveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm.fullName.trim()) return alert("名前は必須です");
+    setLoading(true);
+    try {
+      if (editForm.id) {
+        // 既存の連絡先を更新
+        const res = await fetch(`/api/contacts/${editForm.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editForm),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        showToast('success', '更新完了', '連絡先を更新しました');
+      } else {
+        // 新規連絡先を作成
+        const res = await fetch('/api/contacts', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: editForm.fullName,
+            email: editForm.email,
+            phone: editForm.phone,
+            position: editForm.position,
+            company: editForm.companyName,
+            notes: editForm.notes,
+            businessCardImage: editForm.businessCardImage,
+            profileImage: editForm.profileImage
+          }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        showToast('success', '登録完了', '新しい連絡先を登録しました');
+      }
+      setShowEditModal(false);
+      await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder);
+    } catch (err) {
+      showToast('error', editForm.id ? '更新失敗' : '登録失敗', err instanceof Error ? err.message : String(err));
+    } finally { setLoading(false); }
+  };
+
+  // 削除
+  const deleteContact = async (id: string, name: string) => {
+    if (!confirm(`${name}を削除しますか？`)) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/contacts/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder);
+      showToast('success', '削除完了', '連絡先を削除しました');
+    } catch (err) {
+      showToast('error', '削除失敗', err instanceof Error ? err.message : String(err));
+    } finally { setLoading(false); }
+  };
+
+  // CSVインポート
+  const importCSV = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) {
+      showToast('warning', 'ファイル未選択', 'ファイルを選択してください');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      
+      const res = await fetch('/api/contacts/import', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!res.ok) throw new Error(await res.text());
+      
+      const result = await res.json();
+      setImportResult(result);
+      setImportFile(null);
+      await loadContacts(currentPage, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder);
+      
+      if (result.successCount > 0) {
+        showToast('success', 'インポート完了', `${result.successCount}件の連絡先をインポートしました`);
+      }
+    } catch (err) {
+      showToast('error', 'インポート失敗', err instanceof Error ? err.message : String(err));
+    } finally { setLoading(false); }
+  };
+
+  // 画像アップロード
+  const uploadImage = async (file: File, type: "businessCard" | "profile", isEdit: boolean = false) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', type);
+      
+      const res = await fetch('/api/contacts/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!res.ok) throw new Error(await res.text());
+      
+      const result = await res.json();
+      
+      if (isEdit) {
+        setEditForm(prev => ({
+          ...prev,
+          [type === "businessCard" ? "businessCardImage" : "profileImage"]: result.url
+        }));
+      } else {
+        setForm(prev => ({
+          ...prev,
+          [type === "businessCard" ? "businessCardImage" : "profileImage"]: result.url
+        }));
+      }
+      
+      return result.url;
+    } catch (err) {
+      showToast('error', 'アップロード失敗', err instanceof Error ? err.message : String(err));
+      return null;
+    }
+  };
+
+  return (
+    <div className={`min-h-screen transition-all duration-300 ${
+      isDarkMode 
+        ? 'bg-slate-900 text-slate-100' 
+        : 'bg-slate-50 text-slate-900'
+    }`}>
+      {/* ヘッダー */}
+      <PageHeader title="連絡先管理" />
+      
+      {/* アクションバー */}
+      <div className={`sticky top-16 z-30 border-b backdrop-blur-lg transition-all duration-300 ${
+        isDarkMode 
+          ? 'bg-slate-800/95 border-slate-700' 
+          : 'bg-white/95 border-slate-200'
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex justify-between items-center">
+            
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              {selectedContacts.length > 0 && (
+                <button
+                  onClick={() => setShowBulkEmailModal(true)}
+                  className="px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+                >
+                   一括メール送信 ({selectedContacts.length}件)
+                </button>
+              )}
+              <button
+                onClick={toggleDarkMode}
+                className={`p-2 rounded-lg transition-all duration-200 hover:scale-105 ${
+                  isDarkMode 
+                    ? 'bg-slate-700 hover:bg-slate-600 text-yellow-400' 
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                }`}
+                title={isDarkMode ? "ライトモードに切り替え" : "ダークモードに切り替え"}
+              >
+                {isDarkMode ? '☀️' : '🌙'}
+              </button>
+              <button
+                onClick={() => setShowOcrModal(true)}
+                className="px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+              >
+                 名刺OCR
+              </button>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+              >
+                 CSVインポート              </button>
+              <button
+                onClick={() => window.location.href = '/dashboard'}
+                className="px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+              >
+                 ダッシュボード              </button>
+              <button
+                onClick={() => window.location.href = '/network'}
+                className="px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-lg hover:from-teal-600 hover:to-teal-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+              >
+                 人脈マップ
+              </button>
+              <button
+                onClick={() => window.location.href = '/reminders'}
+                className="px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+              >
+                 リマインダー
+              </button>
+              <button
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = '/api/contacts/export';
+                  link.download = `contacts_${new Date().toISOString().split('T')[0]}.csv`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                className="px-3 py-2 bg-gradient-to-r from-blue-500 to-green-600 text-white rounded-lg hover:from-blue-600 hover:to-green-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+              >
+                 CSVエクスポート              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* 検索・フィルタ機能 */}
+        <div className="space-y-4">
+          {/* 基本検索 */}
+          <div className={`rounded-xl border shadow-sm transition-all duration-300 ${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white border-slate-200'
+          }`}>
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row gap-4 items-center">
+                <div className="flex-1 relative w-full">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="会社名・氏名・Email・電話番号を検索"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      // クリアボタンの表示制御
+                      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+                      const newTimer = setTimeout(() => {
+                        setIsSearching(false);
+                      }, 300);
+                      setSearchDebounceTimer(newTimer);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSearch();
+                      }
+                    }}
+                    className={`w-full pl-12 pr-${searchTerm ? '10' : '4'} py-3 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      isDarkMode 
+                        ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                    }`}
+                  />
+                  {/* 検索中インジケータ */}
+                  {isSearching && (
+                    <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                      <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                    </div>
+                  )}
+                  {/* クリアボタン */}
+                  {searchTerm && !isSearching && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm("");
+                        handleSearch("");
+                      }}
+                      className="absolute right-12 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                      title="検索をクリア"
+                    >
+                      <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {/* クイックソート */}
+                  <select
+                    value={`${sortBy}-${sortOrder}`}
+                    onChange={(e) => {
+                      const [newSortBy, newSortOrder] = e.target.value.split('-');
+                      handleSortChange(newSortBy, newSortOrder as "asc" | "desc");
+                    }}
+                    className={`px-3 py-3 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      isDarkMode 
+                        ? 'bg-slate-700 border-slate-600 text-slate-100' 
+                        : 'bg-slate-100 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <optgroup label="日付">
+                      <option value="createdAt-desc">登録日（新しい順）</option>
+                      <option value="createdAt-asc">登録日（古い順）</option>
+                      <option value="updatedAt-desc">更新日（新しい順）</option>
+                      <option value="updatedAt-asc">更新日（古い順）</option>
+                      <option value="lastContactAt-desc">最終連絡日（新しい順）</option>
+                      <option value="lastContactAt-asc">最終連絡日（古い順）</option>
+                    </optgroup>
+                    <optgroup label="名前・会社">
+                      <option value="fullName-asc">氏名（あ→ん）</option>
+                      <option value="fullName-desc">氏名（ん→あ）</option>
+                      <option value="company-asc">会社名（あ→ん）</option>
+                      <option value="company-desc">会社名（ん→あ）</option>
+                    </optgroup>
+                    <optgroup label="重要度・連絡先">
+                      <option value="importance-desc">重要度（高→低）</option>
+                      <option value="importance-asc">重要度（低→高）</option>
+                      <option value="email-asc">メール（あ→ん）</option>
+                      <option value="position-asc">役職（あ→ん）</option>
+                    </optgroup>
+                  </select>
+
+                  <button
+                    onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+                    className={`px-4 py-3 rounded-lg transition-all duration-200 font-medium ${
+                      isDarkMode 
+                        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white' 
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {showAdvancedSearch ? "詳細検索を閉じる" : "詳細検索"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 高度な検索・フィルタ */}
+          {showAdvancedSearch && (
+            <div className={`rounded-xl border shadow-sm transition-all duration-300 ${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700' 
+                : 'bg-white border-slate-200'
+            }`}>
+              <div className="p-6">
+                <h3 className={`text-lg font-semibold mb-6 ${
+                  isDarkMode ? 'text-slate-100' : 'text-slate-900'
+                }`}>
+                   詳細検索・フィルタ
+                </h3>
+                
+                {/* フィルタ条件 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {[
+                    { key: 'name', label: '氏名', placeholder: '氏名で絞り込み', icon: '' },
+                    { key: 'company', label: '会社', placeholder: '会社名で絞り込み', icon: '' },
+                    { key: 'position', label: '役職', placeholder: '役職で絞り込み', icon: '' },
+                    { key: 'email', label: 'メール', placeholder: 'メールで絞り込み', icon: '' }
+                  ].map(({ key, label, placeholder, icon }) => (
+                    <div key={key}>
+                      <label className={`text-sm font-medium block mb-2 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        {icon} {label}
+                      </label>
+                      <input
+                        type="text"
+                        value={filters[key as keyof typeof filters] as string}
+                        onChange={(e) => setFilters({...filters, [key]: e.target.value})}
+                        className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          isDarkMode 
+                            ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                            : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                        }`}
+                        placeholder={placeholder}
+                      />
+                    </div>
+                  ))}
+                </div>
+                
+                {/* チェックボックスフィルタ */}
+                <div className="flex flex-wrap gap-6 mb-6">
+                  {[
+                    { key: 'hasPhone', label: '電話番号あり', icon: '' },
+                    { key: 'hasEmail', label: 'メールアドレスあり', icon: '' },
+                    { key: 'hasNotes', label: 'メモあり', icon: '' },
+                    { key: 'hasBusinessCard', label: '名刺画像あり', icon: '🎴' }
+                  ].map(({ key, label, icon }) => (
+                    <label key={key} className={`flex items-center space-x-2 cursor-pointer transition-colors ${
+                      isDarkMode ? 'hover:text-slate-300' : 'hover:text-slate-700'
+                    }`}>
+                      <input
+                        type="checkbox"
+                        checked={filters[key as keyof typeof filters] as boolean}
+                        onChange={(e) => setFilters({...filters, [key]: e.target.checked})}
+                        className={`rounded border-2 transition-colors ${
+                          isDarkMode 
+                            ? 'border-slate-600 text-blue-400 focus:ring-blue-500 bg-slate-700' 
+                            : 'border-slate-300 text-blue-600 focus:ring-blue-500'
+                        }`}
+                      />
+                      <span className={`text-sm font-medium ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        {icon} {label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                
+                {/* ソート機能 */}
+                <div className="flex flex-col sm:flex-row gap-4 items-center mb-6">
+                  <span className={`text-sm font-medium ${
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                     並び順
+                  </span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className={`px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      isDarkMode 
+                        ? 'bg-slate-700 border-slate-600 text-slate-100' 
+                        : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="createdAt">登録日</option>
+                    <option value="fullName">氏名</option>
+                    <option value="company">会社</option>
+                    <option value="position">役職</option>
+                    <option value="email">メール</option>
+                  </select>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+                    className={`px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      isDarkMode 
+                        ? 'bg-slate-700 border-slate-600 text-slate-100' 
+                        : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="desc">降順</option>
+                    <option value="asc">昇順</option>
+                  </select>
+                </div>
+                
+                {/* フィルタ実行・リセット */}
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      setCurrentPage(1);
+                      loadContacts(1, searchTerm, filters.company, filters.hasPhone ? 1 : null, sortBy, sortOrder, filters.hasBusinessCard ? 1 : null);
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+                  >
+                     フィルタを適用
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setFilters({
+                        name: "",
+                        company: "",
+                        position: "",
+                        email: "",
+                        hasPhone: false,
+                        hasEmail: false,
+                        hasNotes: false,
+                        hasBusinessCard: false
+                      });
+                      setSortBy("createdAt");
+                      setSortOrder("desc");
+                      setCurrentPage(1);
+                      loadContacts(1, "", "", null, "createdAt", "desc", null);
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+                  >
+                     フィルタをリセット
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+      {/* 追加フォーム */}
+        <div className={`rounded-xl border shadow-sm transition-all duration-300 ${
+          isDarkMode 
+            ? 'bg-slate-800 border-slate-700' 
+            : 'bg-white border-slate-200'
+        }`}>
+          <div className="p-6">
+            <h2 className={`text-lg font-semibold mb-6 flex items-center ${
+              isDarkMode ? 'text-slate-100' : 'text-slate-900'
+            }`}>
+              <span className="mr-2">➕</span>
+              新しい連絡先を追加
+            </h2>
+            <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+                <label className={`text-sm font-medium block mb-2 ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                }`}>
+                   氏名 *
+                </label>
+                <input 
+                  className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    isDarkMode 
+                      ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                  }`}
+            value={form.fullName}
+            onChange={e=>setForm({...form, fullName:e.target.value})}
+                  placeholder="豊田章男" 
+                />
+        </div>
+        <div>
+                <label className={`text-sm font-medium block mb-2 ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                }`}>
+                   会社吁E                </label>
+                <input 
+                  className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    isDarkMode 
+                      ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                  }`}
+            value={form.companyName}
+            onChange={e=>setForm({...form, companyName:e.target.value})}
+                  placeholder="TOYOTA" 
+                />
+        </div>
+        <div>
+                <label className={`text-sm font-medium block mb-2 ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                }`}>
+                   役職
+                </label>
+                <input 
+                  className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    isDarkMode 
+                      ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                  }`}
+            value={form.position}
+            onChange={e=>setForm({...form, position:e.target.value})}
+                  placeholder="代表取締役社長" 
+                />
+        </div>
+        <div>
+                <label className={`text-sm font-medium block mb-2 ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                }`}>
+                   メール
+                </label>
+                <input 
+                  className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    isDarkMode 
+                      ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                  }`}
+            value={form.email}
+            onChange={e=>setForm({...form, email:e.target.value})}
+                  placeholder="akio.toyoda@toyota.co.jp" 
+                />
+        </div>
+        <div>
+                <label className={`text-sm font-medium block mb-2 ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                }`}>
+                   電話
+                </label>
+                <input 
+                  className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    isDarkMode 
+                      ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                  }`}
+            value={form.phone}
+            onChange={e=>setForm({...form, phone:e.target.value})}
+                  placeholder="03-xxxx-xxxx" 
+                />
+        </div>
+        <div className="md:col-span-3">
+                <label className={`text-sm font-medium block mb-2 ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                }`}>
+                   メモ
+                </label>
+                <textarea 
+                  className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    isDarkMode 
+                      ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                  }`}
+                  rows={3}
+            value={form.notes}
+            onChange={e=>setForm({...form, notes:e.target.value})}
+                  placeholder="次回会議の議題について" 
+                />
+              </div>
+              <div className="md:col-span-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 block mb-2">
+                      名刺画像                    </label>
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await uploadImage(file, "businessCard");
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      {form.businessCardImage && (
+                        <div className="relative">
+                          <Image 
+                            src={form.businessCardImage} 
+                            alt="名刺画像" 
+                            width={128}
+                            height={80}
+                            className="object-contain rounded border"
+                            style={{ aspectRatio: '16/10' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, businessCardImage: "" }))}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ❌                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 block mb-2">
+                      顔写真                    </label>
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await uploadImage(file, "profile");
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      {form.profileImage && (
+                        <div className="relative">
+                          <Image 
+                            src={form.profileImage} 
+                            alt="顔写真" 
+                            width={80}
+                            height={80}
+                            className="object-cover rounded-full border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, profileImage: "" }))}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ❌                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+        </div>
+              <div className="md:col-span-3">
+                <button 
+                  disabled={loading} 
+                  className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {loading ? "保存中…" : "連絡先を追加"}
+        </button>
+              </div>
+      </form>
+          </div>
+        </div>
+
+        {/* 検索結果表示 */}
+        <div className="space-y-4">
+          {/* 結果サマリー */}
+          <div className={`rounded-xl border shadow-sm transition-all duration-300 ${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white border-slate-200'
+          }`}>
+            <div className="p-4">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
+                <div className={`text-sm ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
+                   検索結果: <span className={`font-semibold ${
+                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                  }`}>{filteredData.length}</span>件
+                  {filteredData.length !== data.length && (
+                    <span className={`ml-2 ${
+                      isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                    }`}>
+                      (全{data.length}件中)
+                    </span>
+                  )}
+                  {(filters.hasPhone || filters.hasEmail || filters.hasNotes || filters.hasBusinessCard) && (
+                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                      isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      フィルタ適用中
+                    </span>
+                  )}
+                </div>
+                {filteredData.length > 0 && (
+                  <div className={`text-sm ${
+                    isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                  }`}>
+                    📈 並び {sortBy === "createdAt" ? "登録日" : 
+                            sortBy === "fullName" ? "氏名" :
+                            sortBy === "company" ? "会社" :
+                            sortBy === "position" ? "役職" : "メール"}
+                    {sortOrder === "desc" ? " (降順)" : " (昇順)"}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+      {/* 一覧表示 */}
+          {filteredData.length > 0 ? (
+            <>
+            {/* Desktop Table View - Hidden on mobile */}
+            <div className={`hidden md:block rounded-xl border shadow-sm transition-all duration-300 overflow-hidden ${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700' 
+                : 'bg-white border-slate-200'
+            }`}>
+      <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className={`${
+                    isDarkMode ? 'bg-slate-700' : 'bg-slate-50'
+                  }`}>
+                    <tr>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-500'
+                      }`}>
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedContacts.length === filteredData.length && filteredData.length > 0}
+                            onChange={(e) => handleSelectAll(e.target.checked)}
+                            className="mr-2 rounded border-slate-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-2"
+                            aria-label="すべての連絡先を選択"
+                          />
+                          全選択                        </label>
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-500'
+                      }`}>
+                         会社名・氏名
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-500'
+                      }`}>
+                         部署・役職
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-500'
+                      }`}>
+                         連絡允E                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-500'
+                      }`}>
+                         登録日
+                      </th>
+                      <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-500'
+                      }`}>
+                        ⚙️ 操作                      </th>
+            </tr>
+          </thead>
+                  <tbody className={`divide-y ${
+                    isDarkMode ? 'divide-slate-700 bg-slate-800' : 'divide-slate-200 bg-white'
+                  }`}>
+                    {filteredData.map((contact) => (
+                      <tr key={contact.id} className={`transition-colors duration-200 ${
+                        isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
+                      }`}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedContacts.includes(contact.id)}
+                            onChange={(e) => handleSelectContact(contact.id, e.target.checked)}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {contact.profileImage ? (
+                              <Image 
+                                src={contact.profileImage} 
+                                alt="顔写真" 
+                                width={40}
+                                height={40}
+                                className="rounded-full object-cover mr-3 shadow-md"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3 shadow-md">
+                                <span className="text-white text-sm font-bold">
+                                  {contact.fullName.charAt(0)}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              <Link 
+                                href={`/contacts/${contact.id}`}
+                                className={`text-sm font-medium hover:text-blue-500 transition-colors cursor-pointer ${
+                                  isDarkMode ? 'text-slate-100' : 'text-slate-900'
+                                }`}
+                              >
+                                {contact.fullName}
+                              </Link>
+                              <div className={`text-sm ${
+                                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                              }`}>
+                                {contact.company?.name || "会社名なし"}
+                              </div>
+                            </div>
+                            {contact.businessCardImage && (
+                              <div className="ml-2">
+                                <Image 
+                                  src={contact.businessCardImage} 
+                                  alt="名刺画像" 
+                                  width={64}
+                                  height={40}
+                                  className="object-contain rounded-lg border shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                                  style={{ aspectRatio: '16/10' }}
+                                  title="名刺画像をクリックして拡大"
+                                  onClick={() => contact.businessCardImage && window.open(contact.businessCardImage, '_blank')}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          isDarkMode ? 'text-slate-300' : 'text-slate-900'
+                        }`}>
+                          {contact.position || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="space-y-1">
+                            {contact.email && (
+                              <div>
+                                <a href={`mailto:${contact.email}`} className={`hover:underline ${
+                                  isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'
+                                }`}>
+                                   {contact.email}
+                                </a>
+                              </div>
+                            )}
+                            {contact.phone && (
+                              <div>
+                                <a href={`tel:${contact.phone}`} className={`hover:underline ${
+                                  isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'
+                                }`}>
+                                   {contact.phone}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                          isDarkMode ? 'text-slate-300' : 'text-slate-900'
+                        }`}>
+                          {contact.createdAt ? new Date(contact.createdAt).toLocaleDateString('ja-JP', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                          }) : "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <a
+                              href={`/contacts/${contact.id}`}
+                              className={`px-3 py-1 rounded-lg transition-all duration-200 font-medium ${
+                                isDarkMode 
+                                  ? 'text-green-400 hover:text-green-300 hover:bg-green-900/30' 
+                                  : 'text-green-600 hover:text-green-800 hover:bg-green-50'
+                              }`}
+                            >
+                              🔍 詳細
+                            </a>
+                            <button
+                              onClick={() => openEditModal(contact)}
+                              className={`px-3 py-1 rounded-lg transition-all duration-200 font-medium ${
+                                isDarkMode 
+                                  ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-900/30' 
+                                  : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                              }`}
+                            >
+                              ✏️ 編集                            </button>
+                            <button
+                              onClick={() => deleteContact(contact.id, contact.fullName)}
+                              className={`px-3 py-1 rounded-lg transition-all duration-200 font-medium ${
+                                isDarkMode 
+                                  ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30' 
+                                  : 'text-red-600 hover:text-red-800 hover:bg-red-50'
+                              }`}
+                            >
+                              🗑️ 削除
+                            </button>
+                          </div>
+                        </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+              </div>
+            </div>
+
+            {/* Mobile Card View - Visible only on mobile */}
+            <div className="md:hidden space-y-4">
+              {/* Mobile Header with Select All */}
+              <div className={`p-4 rounded-lg ${
+                isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
+              }`}>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedContacts.length === filteredData.length && filteredData.length > 0}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="mr-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className={`text-sm font-medium ${
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    全選抁E({selectedContacts.length}件選択中)
+                  </span>
+                </label>
+              </div>
+
+              {/* Mobile Contact Cards */}
+              {filteredData.map((contact) => (
+                <div
+                  key={contact.id}
+                  className={`rounded-xl border shadow-sm transition-all duration-300 overflow-hidden transform hover:scale-[1.02] hover:-translate-y-1 ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 hover:border-slate-600 hover:shadow-xl' 
+                      : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-lg'
+                  }`}
+                >
+                  <div className="p-4">
+                    {/* Top row: checkbox, avatar, name, actions */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center flex-1 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={selectedContacts.includes(contact.id)}
+                          onChange={(e) => handleSelectContact(contact.id, e.target.checked)}
+                          className="mr-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                        />
+                        
+                        {contact.profileImage ? (
+                          <Image 
+                            src={contact.profileImage} 
+                            alt="顔写真" 
+                            width={48}
+                            height={48}
+                            className="rounded-full object-cover mr-3 shadow-md flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3 shadow-md flex-shrink-0">
+                            <span className="text-white text-sm font-bold">
+                              {contact.fullName.charAt(0)}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                          <Link 
+                            href={`/contacts/${contact.id}`}
+                            className={`text-lg font-semibold block truncate hover:text-blue-500 transition-colors cursor-pointer ${
+                              isDarkMode ? 'text-slate-100' : 'text-slate-900'
+                            }`}
+                          >
+                            {contact.fullName}
+                          </Link>
+                          {contact.company && (
+                            <p className={`text-sm truncate ${
+                              isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                            }`}>
+                              {contact.company.name}
+                            </p>
+                          )}
+                          {contact.position && (
+                            <p className={`text-xs truncate ${
+                              isDarkMode ? 'text-slate-500' : 'text-slate-500'
+                            }`}>
+                              {contact.position}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Business card thumbnail */}
+                      {contact.businessCardImage && (
+                        <div className="ml-3 flex-shrink-0">
+                          <Image 
+                            src={contact.businessCardImage} 
+                            alt="名刺画像" 
+                            width={48}
+                            height={32}
+                            className="object-contain rounded border shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                            style={{ aspectRatio: '16/10' }}
+                            title="名刺画像をクリックして拡大"
+                            onClick={() => contact.businessCardImage && window.open(contact.businessCardImage, '_blank')}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Contact info */}
+                    <div className="space-y-2 mb-4">
+                      {contact.email && (
+                        <div className="flex items-center">
+                          <span className="text-lg mr-2"></span>
+                          <a href={`mailto:${contact.email}`} className={`text-sm hover:underline truncate ${
+                            isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'
+                          }`}>
+                            {contact.email}
+                          </a>
+                        </div>
+                      )}
+                      {contact.phone && (
+                        <div className="flex items-center">
+                          <span className="text-lg mr-2"></span>
+                          <a href={`tel:${contact.phone}`} className={`text-sm hover:underline ${
+                            isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-800'
+                          }`}>
+                            {contact.phone}
+                          </a>
+                        </div>
+                      )}
+                      <div className="flex items-center">
+                        <span className="text-lg mr-2"></span>
+                        <span className={`text-sm ${
+                          isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                        }`}>
+                          {new Date(contact.createdAt || "").toLocaleDateString('ja-JP')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={`/contacts/${contact.id}`}
+                        className={`px-3 py-1.5 rounded-lg transition-all duration-200 font-medium text-sm flex-1 text-center ${
+                          isDarkMode 
+                            ? 'text-green-400 hover:text-green-300 hover:bg-green-900/30 border border-green-600/30' 
+                            : 'text-green-600 hover:text-green-800 hover:bg-green-50 border border-green-200'
+                        }`}
+                      >
+                        🔍 詳細
+                      </a>
+                      <button
+                        onClick={() => openEditModal(contact)}
+                        className={`px-3 py-1.5 rounded-lg transition-all duration-200 font-medium text-sm flex-1 ${
+                          isDarkMode 
+                            ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 border border-blue-600/30' 
+                            : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200'
+                        }`}
+                      >
+                        ✏️ 編集                      </button>
+                      <button
+                        onClick={() => deleteContact(contact.id, contact.fullName)}
+                        className={`px-3 py-1.5 rounded-lg transition-all duration-200 font-medium text-sm ${
+                          isDarkMode 
+                            ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30 border border-red-600/30' 
+                            : 'text-red-600 hover:text-red-800 hover:bg-red-50 border border-red-200'
+                        }`}
+                      >
+                        🗑️ 削除                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
+          ) : (
+            <div className={`rounded-xl border shadow-sm transition-all duration-300 p-12 text-center ${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700' 
+                : 'bg-white border-slate-200'
+            }`}>
+              <div className="text-6xl mb-4"></div>
+              <h3 className={`text-lg font-medium mb-2 ${
+                isDarkMode ? 'text-slate-100' : 'text-slate-900'
+              }`}>
+                検索結果が見つかりません
+              </h3>
+              <p className={`${
+                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              }`}>
+                検索条件に一致する連絡先が見つかりませんでした。              </p>
+            </div>
+          )}
+        </div>
+
+        {/* ページネーション */}
+        {totalPages > 1 && (
+          <div className={`mt-8 rounded-xl border shadow-sm transition-all duration-300 ${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white border-slate-200'
+          }`}>
+            <div className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                {totalCount}件中 {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} 件を表示
+                {isLoadingPage && <span className="ml-2"> 読み込み中...</span>}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(1)}
+                  disabled={currentPage === 1 || isLoadingPage}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    currentPage === 1 || isLoadingPage
+                      ? isDarkMode ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400'
+                      : isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  ««
+                </button>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1 || isLoadingPage}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    currentPage === 1 || isLoadingPage
+                      ? isDarkMode ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400'
+                      : isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  ‹ 前へ
+                </button>
+
+                {/* ページ番号 */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      disabled={isLoadingPage}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                        currentPage === pageNum
+                          ? 'bg-blue-500 text-white shadow-md'
+                          : isLoadingPage
+                          ? isDarkMode ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400'
+                          : isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages || isLoadingPage}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    currentPage === totalPages || isLoadingPage
+                      ? isDarkMode ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400'
+                      : isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  次へ ›
+                </button>
+                
+                <button
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={currentPage === totalPages || isLoadingPage}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    currentPage === totalPages || isLoadingPage
+                      ? isDarkMode ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400'
+                      : isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  »»
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 編集モーダル */}
+        {showEditModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className={`rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto ${
+              isDarkMode ? 'bg-slate-800' : 'bg-white'
+            }`}>
+              <div className="p-6">
+                <h2 className={`text-xl font-semibold mb-6 flex items-center ${
+                  isDarkMode ? 'text-slate-100' : 'text-slate-900'
+                }`}>
+                  <span className="mr-2">{editForm.id ? '✏️' : '➕'}</span>
+                  {editForm.id ? '連絡先を編集' : '新規連絡先を登録'}
+                </h2>
+                <form onSubmit={saveEdit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`text-sm font-medium block mb-2 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                         氏名 *
+                      </label>
+                      <input 
+                        className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          isDarkMode 
+                            ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                            : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                        }`}
+                        value={editForm.fullName}
+                        onChange={e=>setEditForm({...editForm, fullName:e.target.value})}
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label className={`text-sm font-medium block mb-2 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                         会社吁E                      </label>
+                      <input 
+                        className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          isDarkMode 
+                            ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                            : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                        }`}
+                        value={editForm.companyName}
+                        onChange={e=>setEditForm({...editForm, companyName:e.target.value})} 
+                      />
+                    </div>
+                    <div>
+                      <label className={`text-sm font-medium block mb-2 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                         役職
+                      </label>
+                      <input 
+                        className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          isDarkMode 
+                            ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                            : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                        }`}
+                        value={editForm.position}
+                        onChange={e=>setEditForm({...editForm, position:e.target.value})} 
+                      />
+                    </div>
+                    <div>
+                      <label className={`text-sm font-medium block mb-2 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                         メール
+                      </label>
+                      <input 
+                        className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          isDarkMode 
+                            ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                            : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                        }`}
+                        value={editForm.email}
+                        onChange={e=>setEditForm({...editForm, email:e.target.value})} 
+                      />
+                    </div>
+                    <div>
+                      <label className={`text-sm font-medium block mb-2 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                         電話
+                      </label>
+                      <input 
+                        className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          isDarkMode 
+                            ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                            : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                        }`}
+                        value={editForm.phone}
+                        onChange={e=>setEditForm({...editForm, phone:e.target.value})} 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`text-sm font-medium block mb-2 ${
+                      isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                       メモ
+                    </label>
+                    <textarea 
+                      className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        isDarkMode 
+                          ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                          : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                      }`}
+                      rows={3}
+                      value={editForm.notes}
+                      onChange={e=>setEditForm({...editForm, notes:e.target.value})} 
+                    />
+                  </div>
+                  <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={`text-sm font-medium block mb-2 ${
+                          isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                        }`}>
+                          🃏 名刺画像                        </label>
+                        <div className="space-y-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                await uploadImage(file, "businessCard", true);
+                              }
+                            }}
+                            className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                              isDarkMode 
+                                ? 'bg-slate-700 border-slate-600 text-slate-100' 
+                                : 'bg-slate-50 border-slate-300 text-slate-900'
+                            }`}
+                          />
+                          {editForm.businessCardImage && (
+                            <div className="relative">
+                              <Image 
+                                src={editForm.businessCardImage} 
+                                alt="名刺画像" 
+                                width={128}
+                                height={80}
+                                className="object-contain rounded-lg border shadow-sm"
+                                style={{ aspectRatio: '16/10' }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setEditForm(prev => ({ ...prev, businessCardImage: "" }))}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                              >
+                                ❌                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className={`text-sm font-medium block mb-2 ${
+                          isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                        }`}>
+                           顔写真                        </label>
+                        <div className="space-y-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                await uploadImage(file, "profile", true);
+                              }
+                            }}
+                            className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                              isDarkMode 
+                                ? 'bg-slate-700 border-slate-600 text-slate-100' 
+                                : 'bg-slate-50 border-slate-300 text-slate-900'
+                            }`}
+                          />
+                          {editForm.profileImage && (
+                            <div className="relative">
+                              <Image 
+                                src={editForm.profileImage} 
+                                alt="顔写真" 
+                                width={80}
+                                height={80}
+                                className="object-cover rounded-full border shadow-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setEditForm(prev => ({ ...prev, profileImage: "" }))}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                              >
+                                ❌                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-3 pt-6 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setShowEditModal(false)}
+                      className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
+                        isDarkMode 
+                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white' 
+                          : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
+                      }`}
+                    >
+                      ❌ キャンセル
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
+                    >
+                      {loading ? " 保存中…" : " 保存"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* インポートモーダル */}
+        {showImportModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className={`rounded-xl shadow-2xl w-full max-w-md ${
+              isDarkMode ? 'bg-slate-800' : 'bg-white'
+            }`}>
+              <div className="p-6">
+                <h2 className={`text-xl font-semibold mb-6 flex items-center ${
+                  isDarkMode ? 'text-slate-100' : 'text-slate-900'
+                }`}>
+                  <span className="mr-2"></span>
+                  CSVインポート                </h2>
+                <form onSubmit={importCSV} className="space-y-4">
+                  <div>
+                    <label className={`text-sm font-medium block mb-2 ${
+                      isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                      📄 CSVファイルを選択                    </label>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                      className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        isDarkMode 
+                          ? 'bg-slate-700 border-slate-600 text-slate-100' 
+                          : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
+                      required
+                    />
+                  </div>
+                  
+                  {importResult && (
+                    <div className={`p-3 rounded-lg ${
+                      isDarkMode ? 'bg-slate-700' : 'bg-slate-50'
+                    }`}>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                      }`}>
+                        成功: <span className="text-green-600 font-medium">{importResult.successCount}</span>件, 
+                        失敁E <span className="text-red-600 font-medium">{importResult.errorCount}</span>件
+                      </p>
+                      {importResult.errors.length > 0 && (
+                        <details className="mt-2">
+                          <summary className={`text-sm cursor-pointer ${
+                            isDarkMode ? 'text-red-400' : 'text-red-600'
+                          }`}>
+                            エラー詳細
+                          </summary>
+                          <ul className={`text-xs mt-1 space-y-1 ${
+                            isDarkMode ? 'text-red-400' : 'text-red-600'
+                          }`}>
+                            {importResult.errors.map((error, index) => (
+                              <li key={index}>{error}</li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end space-x-3 pt-6 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowImportModal(false);
+                        setImportResult(null);
+                      }}
+                      className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
+                        isDarkMode 
+                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white' 
+                          : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
+                      }`}
+                    >
+                      ❌ キャンセル
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading || !importFile}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
+                    >
+                      {loading ? " インポート中…" : " インポート"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 一括メール送信モーダル */}
+        {showBulkEmailModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className={`rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto ${
+              isDarkMode ? 'bg-slate-800' : 'bg-white'
+            }`}>
+              <div className="p-6">
+                <h2 className={`text-xl font-semibold mb-6 flex items-center ${
+                  isDarkMode ? 'text-slate-100' : 'text-slate-900'
+                }`}>
+                  <span className="mr-2"></span>
+                  一括メール送信 ({selectedContacts.length}件)
+                </h2>
+                
+                {/* 選択された連絡先リスチE*/}
+                <div className={`mb-6 p-4 rounded-lg ${
+                  isDarkMode ? 'bg-slate-700' : 'bg-slate-50'
+                }`}>
+                  <h3 className={`text-sm font-medium mb-2 ${
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    送信允E
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {filteredData
+                      .filter(contact => selectedContacts.includes(contact.id))
+                      .map(contact => (
+                        <span key={contact.id} className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          isDarkMode 
+                            ? 'bg-blue-900 text-blue-200' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {contact.fullName}
+                          {contact.email && (
+                            <span className={`ml-1 ${
+                              isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                            }`}>
+                              ({contact.email})
+                            </span>
+                          )}
+                        </span>
+                      ))
+                    }
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {/* テンプレート選択 */}
+                  <div>
+                    <label className={`text-sm font-medium block mb-2 ${
+                      isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                       テンプレート (オプション)
+                    </label>
+                    <select
+                      value={bulkEmailForm.template}
+                      onChange={(e) => {
+                        setBulkEmailForm({...bulkEmailForm, template: e.target.value});
+                        if (e.target.value) applyEmailTemplate(e.target.value);
+                      }}
+                      className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        isDarkMode 
+                          ? 'bg-slate-700 border-slate-600 text-slate-100' 
+                          : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
+                    >
+                      <option value="">テンプレートを選択...</option>
+                      <option value="greeting">初回挨拶</option>
+                      <option value="followup">フォローアップ</option>
+                      <option value="invitation">イベント招待</option>
+                    </select>
+                  </div>
+
+                  {/* 件吁E*/}
+                  <div>
+                    <label className={`text-sm font-medium block mb-2 ${
+                      isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                       件吁E*
+                    </label>
+                    <input
+                      type="text"
+                      value={bulkEmailForm.subject}
+                      onChange={(e) => setBulkEmailForm({...bulkEmailForm, subject: e.target.value})}
+                      className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        isDarkMode 
+                          ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                          : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                      }`}
+                      placeholder="メールの件名を入力してください"
+                      required
+                    />
+                  </div>
+
+                  {/* 本斁E*/}
+                  <div>
+                    <label className={`text-sm font-medium block mb-2 ${
+                      isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                      📄 本文 *
+                    </label>
+                    <textarea
+                      value={bulkEmailForm.content}
+                      onChange={(e) => setBulkEmailForm({...bulkEmailForm, content: e.target.value})}
+                      rows={8}
+                      className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        isDarkMode 
+                          ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-gray-400' 
+                          : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-gray-500'
+                      }`}
+                      placeholder="メールの本文を入力してください"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-6 border-t border-slate-200 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowBulkEmailModal(false);
+                      setBulkEmailForm({ subject: "", content: "", template: "" });
+                    }}
+                    className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
+                      isDarkMode 
+                        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white' 
+                        : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
+                    }`}
+                  >
+                    ❁Eキャンセル
+                  </button>
+                  <button
+                    onClick={sendBulkEmail}
+                    disabled={loading || selectedContacts.length === 0}
+                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
+                  >
+                    {loading ? " 送信中…" : ` ${selectedContacts.length}件に送信`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* OCRモーダル */}
+        {showOcrModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className={`rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto ${
+              isDarkMode ? 'bg-slate-800' : 'bg-white'
+            }`}>
+              <div className="p-6">
+                <h2 className={`text-xl font-semibold mb-6 flex items-center ${
+                  isDarkMode ? 'text-slate-100' : 'text-slate-900'
+                }`}>
+                  <span className="mr-2"></span>
+                  名刺OCR自動取り込み
+                </h2>
+                
+                <div className={`mb-6 p-4 rounded-lg ${
+                  isDarkMode ? 'bg-slate-700' : 'bg-slate-50'
+                }`}>
+                  <h3 className={`text-sm font-medium mb-2 ${
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                    使い方:
+                  </h3>
+                  <ol className={`list-decimal list-inside text-sm space-y-1 ${
+                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                  }`}>
+                    <li>複数の名刺画像を選択すると自動で一括スキャン開始</li>
+                    <li>選択と同時に画面遷移してバックグラウンドで並列処理</li>
+                    <li>名刺から氏名、会社名、電話番号、メールアドレスを自動抽出</li>
+                    <li>処理完了後に連絡先リストに一括追加</li>
+                  </ol>
+                </div>
+
+                {/* ファイル選抁E*/}
+                <div className="mb-6">
+                  <label className={`text-sm font-medium block mb-2 ${
+                    isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
+                     名刺画像を選択（複数選択可・選択と同時にスキャン開始！）                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length > 0) {
+                        // 複数画像を同時にOCR処理し自動実行                        processMultipleOcrAuto(files);
+                      }
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                      isDarkMode 
+                        ? 'bg-slate-700 border-slate-600 text-slate-100' 
+                        : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+
+                {/* OCR結果表示（デモモード時のみ） */}
+                {ocrResult && (
+                  <div className={`mb-6 p-4 rounded-lg ${
+                    isDarkMode ? 'bg-slate-700' : 'bg-slate-50'
+                  }`}>
+                    <h3 className={`text-sm font-medium mb-2 ${
+                      isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                      認識結果（デモ）
+                    </h3>
+                    <div className={`text-sm space-y-1 ${
+                      isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                    }`}>
+                      <div> 氏名: {ocrResult.fullName}</div>
+                      <div> 会社: {ocrResult.company}</div>
+                      <div> 役職: {ocrResult.position}</div>
+                      <div> メール: {ocrResult.email}</div>
+                      <div> 電話: {ocrResult.phone}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Google Cloud Vision API設定案内 */}
+                <div className={`mb-6 p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-blue-900/20 border-blue-800 text-blue-300' 
+                    : 'bg-blue-50 border-blue-200 text-blue-700'
+                }`}>
+                  <p className="text-sm">
+                     <strong>セットアップ方法：</strong>
+                  </p>
+                  <ol className="list-decimal list-inside text-sm mt-2 space-y-1">
+                    <li>Google Cloudプロジェクトを作成</li>
+                    <li>Vision APIを有効化</li>
+                    <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">APIキーを作成</a></li>
+                    <li>.envファイルにGOOGLE_CLOUD_VISION_API_KEYを設定</li>
+                  </ol>
+                </div>
+
+                <div className="flex justify-center pt-6 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowOcrModal(false);
+                      setOcrFile(null);
+                      setOcrResult(null);
+                    }}
+                    className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
+                      isDarkMode 
+                        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white' 
+                        : 'bg-slate-300 text-slate-700 hover:bg-slate-400'
+                    }`}
+                  >
+                    ❁Eキャンセル
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

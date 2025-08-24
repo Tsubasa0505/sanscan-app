@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3010:3010"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - DATABASE_URL=file:./dev.db
+      - NODE_ENV=development
+    command: npm run dev
+    networks:
+      - firstapp-network
+
+  # PostgreSQL for production-like environment (optional)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: firstapp
+      POSTGRES_PASSWORD: firstapp_password
+      POSTGRES_DB: firstapp_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - firstapp-network
+
+volumes:
+  postgres_data:
+
+networks:
+  firstapp-network:
+    driver: bridge

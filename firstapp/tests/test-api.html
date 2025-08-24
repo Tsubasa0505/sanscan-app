@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0070f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0051cc;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>API接続テスト</h1>
+    
+    <div class="test-section">
+        <h2>ポート3000のテスト</h2>
+        <button onclick="testAPI(3000)">ポート3000でテスト</button>
+        <div id="result-3000"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>ポート3010のテスト</h2>
+        <button onclick="testAPI(3010)">ポート3010でテスト</button>
+        <div id="result-3010"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>データベース直接確認</h2>
+        <button onclick="checkDB()">データベース確認</button>
+        <div id="db-result"></div>
+    </div>
+
+    <script>
+        async function testAPI(port) {
+            const resultDiv = document.getElementById(`result-${port}`);
+            resultDiv.innerHTML = '<p>テスト中...</p>';
+            
+            try {
+                console.log(`Testing http://localhost:${port}/api/contacts`);
+                
+                const response = await fetch(`http://localhost:${port}/api/contacts`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                resultDiv.innerHTML = `
+                    <p class="success">✅ 接続成功！</p>
+                    <p>総件数: ${data.pagination?.total || 0}件</p>
+                    <p>取得件数: ${data.data?.length || 0}件</p>
+                    <details>
+                        <summary>詳細データ</summary>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </details>
+                `;
+                
+                if (data.data && data.data.length > 0) {
+                    resultDiv.innerHTML += '<h3>連絡先リスト:</h3><ul>';
+                    data.data.forEach(contact => {
+                        resultDiv.innerHTML += `<li>${contact.fullName} - ${contact.email || 'メールなし'} - ${contact.company?.name || '会社なし'}</li>`;
+                    });
+                    resultDiv.innerHTML += '</ul>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <p class="error">❌ エラーが発生しました</p>
+                    <p>エラー内容: ${error.message}</p>
+                    <p>コンソールで詳細を確認してください（F12キー）</p>
+                `;
+            }
+        }
+        
+        async function checkDB() {
+            const resultDiv = document.getElementById('db-result');
+            resultDiv.innerHTML = `
+                <p>データベースの確認は、以下のコマンドを実行してください：</p>
+                <pre>node check-contacts.js</pre>
+                <p>または、Prisma Studioを使用：</p>
+                <pre>npx prisma studio</pre>
+            `;
+        }
+    </script>
+</body>
+</html>

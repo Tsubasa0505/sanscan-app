@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OCR Debug Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+    .upload-section {
+      background: #f8f9fa;
+      padding: 30px;
+      border-radius: 15px;
+      margin-bottom: 30px;
+      border: 2px dashed #667eea;
+    }
+    #fileInput {
+      display: none;
+    }
+    .file-label {
+      display: inline-block;
+      padding: 12px 30px;
+      background: #667eea;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s;
+      margin-right: 15px;
+    }
+    .file-label:hover {
+      background: #5a67d8;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    #uploadBtn {
+      padding: 12px 30px;
+      background: #48bb78;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+    #uploadBtn:hover:not(:disabled) {
+      background: #38a169;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(72, 187, 120, 0.4);
+    }
+    #uploadBtn:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      font-weight: bold;
+      display: none;
+    }
+    .status.success {
+      background: #c6f6d5;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+    .status.error {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 1px solid #fc8181;
+    }
+    .status.info {
+      background: #bee3f8;
+      color: #2a4e7c;
+      border: 1px solid #90cdf4;
+    }
+    .preview {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .preview img {
+      max-width: 400px;
+      max-height: 300px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    .result-section {
+      display: none;
+      margin-top: 30px;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 20px;
+    }
+    .result-card {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+    .result-card h3 {
+      color: #667eea;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+    .data-field {
+      margin-bottom: 15px;
+      padding: 10px;
+      background: white;
+      border-radius: 5px;
+    }
+    .data-field label {
+      font-weight: bold;
+      color: #4a5568;
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    .data-field .value {
+      color: #2d3748;
+      font-size: 16px;
+      word-break: break-word;
+    }
+    .data-field .empty {
+      color: #a0aec0;
+      font-style: italic;
+    }
+    pre {
+      background: #1a202c;
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 10px;
+      overflow-x: auto;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .console-log {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #4a5568;
+    }
+    .log-time {
+      color: #90cdf4;
+      font-size: 12px;
+    }
+    .log-error {
+      color: #fc8181;
+      font-weight: bold;
+    }
+    .log-success {
+      color: #68d391;
+    }
+    .log-info {
+      color: #63b3ed;
+    }
+    .test-buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .test-btn {
+      padding: 10px 20px;
+      background: #805ad5;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+    .test-btn:hover {
+      background: #6b46c1;
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 OCR Debug Test Tool</h1>
+    
+    <div class="upload-section">
+      <h2>📸 名刺画像をアップロード</h2>
+      <label for="fileInput" class="file-label">ファイルを選択</label>
+      <input type="file" id="fileInput" accept="image/*">
+      <button id="uploadBtn" disabled>OCRスキャン開始</button>
+      <div class="test-buttons">
+        <button class="test-btn" onclick="testApiKey()">APIキーをテスト</button>
+        <button class="test-btn" onclick="clearLogs()">ログをクリア</button>
+        <button class="test-btn" onclick="testDummyImage()">ダミー画像でテスト</button>
+      </div>
+      <div id="fileName" style="margin-top: 15px; color: #4a5568;"></div>
+      <div class="preview" id="preview"></div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="result-section" id="resultSection">
+      <h2>📊 OCR結果</h2>
+      
+      <div class="result-grid">
+        <div class="result-card">
+          <h3>抽出されたデータ</h3>
+          <div class="data-field">
+            <label>名前</label>
+            <div class="value" id="resultName">-</div>
+          </div>
+          <div class="data-field">
+            <label>メールアドレス</label>
+            <div class="value" id="resultEmail">-</div>
+          </div>
+          <div class="data-field">
+            <label>電話番号</label>
+            <div class="value" id="resultPhone">-</div>
+          </div>
+          <div class="data-field">
+            <label>会社名</label>
+            <div class="value" id="resultCompany">-</div>
+          </div>
+          <div class="data-field">
+            <label>役職・部署</label>
+            <div class="value" id="resultPosition">-</div>
+          </div>
+          <div class="data-field">
+            <label>住所</label>
+            <div class="value" id="resultAddress">-</div>
+          </div>
+        </div>
+        
+        <div class="result-card">
+          <h3>OCR品質情報</h3>
+          <div class="data-field">
+            <label>OCR品質レベル</label>
+            <div class="value" id="ocrQuality">-</div>
+          </div>
+          <div class="data-field">
+            <label>信頼度スコア</label>
+            <div class="value" id="ocrConfidence">-</div>
+          </div>
+          <div class="data-field">
+            <label>信頼性</label>
+            <div class="value" id="ocrReliable">-</div>
+          </div>
+          <div class="data-field">
+            <label>画像URL</label>
+            <div class="value" id="imageUrl">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 30px;">
+        <h3>🔤 抽出されたテキスト（RAW）</h3>
+        <pre id="extractedText">テキストなし</pre>
+      </div>
+
+      <div style="margin-top: 30px;">
+        <h3>📝 レスポンス全体（JSON）</h3>
+        <pre id="responseJson">レスポンスなし</pre>
+      </div>
+    </div>
+
+    <div style="margin-top: 30px;">
+      <h3>🖥️ コンソールログ</h3>
+      <div class="console-log" id="consoleLog">
+        <div class="log-entry">
+          <span class="log-time">[Ready]</span> OCR Debug Tool initialized
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+    const API_URL = 'http://localhost:3010/api/ocr/upload';
+
+    function addLog(message, type = 'info') {
+      const logDiv = document.getElementById('consoleLog');
+      const time = new Date().toLocaleTimeString('ja-JP');
+      const logClass = type === 'error' ? 'log-error' : type === 'success' ? 'log-success' : 'log-info';
+      
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="${logClass}">${message}</span>`;
+      
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('consoleLog').innerHTML = '<div class="log-entry"><span class="log-time">[Cleared]</span> Logs cleared</div>';
+    }
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      selectedFile = e.target.files[0];
+      if (selectedFile) {
+        document.getElementById('fileName').textContent = `選択されたファイル: ${selectedFile.name}`;
+        document.getElementById('uploadBtn').disabled = false;
+        
+        // プレビュー表示
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('preview').innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        };
+        reader.readAsDataURL(selectedFile);
+        
+        addLog(`File selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`, 'info');
+      }
+    });
+
+    document.getElementById('uploadBtn').addEventListener('click', async function() {
+      if (!selectedFile) {
+        showStatus('ファイルを選択してください', 'error');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      showStatus('OCR処理中...', 'info');
+      document.getElementById('uploadBtn').disabled = true;
+      
+      addLog(`Starting OCR scan for ${selectedFile.name}...`, 'info');
+      addLog(`Sending POST request to ${API_URL}`, 'info');
+
+      try {
+        const startTime = Date.now();
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          body: formData
+        });
+        
+        const elapsed = Date.now() - startTime;
+        addLog(`Response received in ${elapsed}ms (Status: ${response.status})`, response.ok ? 'success' : 'error');
+        
+        const data = await response.json();
+        
+        // ログに詳細を記録
+        addLog(`Response: ${JSON.stringify(data).substring(0, 200)}...`, 'info');
+        
+        if (data.error) {
+          addLog(`Error: ${data.error}`, 'error');
+          if (data.instructions) {
+            addLog(`Instructions: ${data.instructions}`, 'info');
+          }
+        }
+        
+        if (data.success) {
+          showStatus('OCRスキャン成功！', 'success');
+          addLog('OCR scan completed successfully!', 'success');
+          displayResults(data);
+        } else {
+          showStatus(data.error || 'OCR処理に失敗しました', 'error');
+          if (data.businessCardUrl) {
+            addLog(`Image saved at: ${data.businessCardUrl}`, 'info');
+          }
+          displayResults(data);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus(`エラー: ${error.message}`, 'error');
+        addLog(`Fatal error: ${error.message}`, 'error');
+        addLog(`Stack: ${error.stack}`, 'error');
+      } finally {
+        document.getElementById('uploadBtn').disabled = false;
+      }
+    });
+
+    function showStatus(message, type) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+      statusDiv.style.display = 'block';
+    }
+
+    function displayResults(data) {
+      document.getElementById('resultSection').style.display = 'block';
+      
+      // 抽出データの表示
+      if (data.extractedData) {
+        document.getElementById('resultName').textContent = data.extractedData.fullName || '-';
+        document.getElementById('resultEmail').textContent = data.extractedData.email || '-';
+        document.getElementById('resultPhone').textContent = data.extractedData.phone || '-';
+        document.getElementById('resultCompany').textContent = data.extractedData.company || '-';
+        document.getElementById('resultPosition').textContent = data.extractedData.position || '-';
+        document.getElementById('resultAddress').textContent = data.extractedData.address || '-';
+      }
+      
+      // OCR品質情報
+      if (data.ocrQuality) {
+        document.getElementById('ocrQuality').textContent = data.ocrQuality.level || '-';
+        document.getElementById('ocrConfidence').textContent = data.ocrQuality.confidence ? 
+          `${(data.ocrQuality.confidence * 100).toFixed(1)}%` : '-';
+        document.getElementById('ocrReliable').textContent = data.ocrQuality.reliable ? '信頼できる' : '要確認';
+      }
+      
+      // 画像URL
+      if (data.businessCardUrl) {
+        document.getElementById('imageUrl').innerHTML = `<a href="${data.businessCardUrl}" target="_blank">${data.businessCardUrl}</a>`;
+      }
+      
+      // 抽出テキスト
+      if (data.extractedText) {
+        document.getElementById('extractedText').textContent = data.extractedText;
+      }
+      
+      // レスポンス全体
+      document.getElementById('responseJson').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function testApiKey() {
+      addLog('Testing Google Cloud Vision API key...', 'info');
+      
+      try {
+        // ダミーの画像データを作成
+        const canvas = document.createElement('canvas');
+        canvas.width = 100;
+        canvas.height = 100;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, 100, 100);
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText('TEST', 20, 50);
+        
+        canvas.toBlob(async (blob) => {
+          const formData = new FormData();
+          formData.append('file', blob, 'test.png');
+          
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData
+          });
+          
+          const data = await response.json();
+          
+          if (data.ocrEnabled === false && data.error && data.error.includes('APIキー')) {
+            addLog('API key not configured properly', 'error');
+            showStatus('APIキーが設定されていません', 'error');
+          } else if (data.success || data.ocrEnabled) {
+            addLog('API key is valid and working!', 'success');
+            showStatus('APIキーは正常に動作しています', 'success');
+          } else {
+            addLog(`API test result: ${data.error || 'Unknown status'}`, 'error');
+            showStatus(data.error || 'APIキーのテストに失敗しました', 'error');
+          }
+        });
+      } catch (error) {
+        addLog(`API key test failed: ${error.message}`, 'error');
+        showStatus(`APIキーテストエラー: ${error.message}`, 'error');
+      }
+    }
+
+    function testDummyImage() {
+      addLog('Creating dummy business card image...', 'info');
+      
+      // ダミーの名刺画像を作成
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 250;
+      const ctx = canvas.getContext('2d');
+      
+      // 背景
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, 400, 250);
+      
+      // テキスト
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 24px Arial';
+      ctx.fillText('山田 太郎', 50, 60);
+      
+      ctx.font = '16px Arial';
+      ctx.fillText('Taro Yamada', 50, 85);
+      
+      ctx.font = '14px Arial';
+      ctx.fillText('営業部 部長', 50, 115);
+      
+      ctx.fillText('株式会社テスト商事', 50, 145);
+      
+      ctx.font = '12px Arial';
+      ctx.fillText('Email: yamada@test.co.jp', 50, 175);
+      ctx.fillText('Tel: 03-1234-5678', 50, 195);
+      ctx.fillText('〒100-0001 東京都千代田区1-1-1', 50, 215);
+      
+      canvas.toBlob((blob) => {
+        const file = new File([blob], 'dummy_business_card.png', { type: 'image/png' });
+        selectedFile = file;
+        
+        // ファイル選択を更新
+        document.getElementById('fileName').textContent = `選択されたファイル: ${file.name} (ダミー画像)`;
+        document.getElementById('uploadBtn').disabled = false;
+        
+        // プレビュー表示
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('preview').innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        };
+        reader.readAsDataURL(file);
+        
+        addLog('Dummy business card image created and loaded', 'success');
+        showStatus('ダミー画像を作成しました。OCRスキャンを実行してください。', 'info');
+      });
+    }
+
+    // 初期化
+    addLog('OCR Debug Tool ready', 'success');
+    addLog(`API Endpoint: ${API_URL}`, 'info');
+  </script>
+</body>
+</html>

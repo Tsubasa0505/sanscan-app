@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "installCommand": "npm install --legacy-peer-deps",
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "SKIP_ENV_VALIDATION": "true"
+  }
+}

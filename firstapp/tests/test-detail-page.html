@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Detail Page Test</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>連絡先詳細ページテスト</h1>
+    <p>以下のリンクをクリックして詳細ページにアクセスしてください：</p>
+    
+    <h2>テストリンク</h2>
+    <ul id="links">
+        <li>読み込み中...</li>
+    </ul>
+
+    <h2>デバッグ情報</h2>
+    <pre id="debug"></pre>
+
+    <script>
+        // APIから連絡先データを取得
+        fetch('http://localhost:3010/api/contacts')
+            .then(res => res.json())
+            .then(data => {
+                const links = document.getElementById('links');
+                const debug = document.getElementById('debug');
+                
+                // デバッグ情報
+                debug.textContent = `取得データ数: ${data.data.length}\n`;
+                debug.textContent += `最初の3件のID:\n`;
+                
+                // リンクをクリア
+                links.innerHTML = '';
+                
+                // 最初の5件の連絡先へのリンクを作成
+                data.data.slice(0, 5).forEach((contact, index) => {
+                    const li = document.createElement('li');
+                    li.style.marginBottom = '10px';
+                    
+                    // 詳細ページへのリンク
+                    const link = document.createElement('a');
+                    link.href = `http://localhost:3010/contacts/${contact.id}`;
+                    link.textContent = `${contact.fullName} (${contact.company?.name || '会社なし'})`;
+                    link.target = '_blank';
+                    link.style.fontSize = '16px';
+                    link.style.color = '#0066cc';
+                    
+                    li.appendChild(link);
+                    
+                    // ID表示
+                    const idSpan = document.createElement('span');
+                    idSpan.textContent = ` - ID: ${contact.id}`;
+                    idSpan.style.color = '#666';
+                    idSpan.style.fontSize = '12px';
+                    li.appendChild(idSpan);
+                    
+                    links.appendChild(li);
+                    
+                    if (index < 3) {
+                        debug.textContent += `  ${index + 1}. ${contact.id} - ${contact.fullName}\n`;
+                    }
+                });
+                
+                // 直接URLアクセス用の情報
+                const directDiv = document.createElement('div');
+                directDiv.style.marginTop = '20px';
+                directDiv.style.padding = '10px';
+                directDiv.style.backgroundColor = '#f0f0f0';
+                directDiv.innerHTML = `
+                    <h3>直接URLアクセス（コピーして使用）</h3>
+                    <code style="background: #fff; padding: 5px; display: block;">
+                        http://localhost:3010/contacts/${data.data[0]?.id}
+                    </code>
+                `;
+                document.body.appendChild(directDiv);
+                
+                // APIエンドポイントテスト
+                if (data.data[0]) {
+                    fetch(`http://localhost:3010/api/contacts/${data.data[0].id}/detail`)
+                        .then(res => res.json())
+                        .then(detail => {
+                            debug.textContent += `\nAPI詳細エンドポイント: ✅ 正常動作\n`;
+                            debug.textContent += `取得データ: ${detail.contact.fullName} (${detail.contact.company?.name})\n`;
+                        })
+                        .catch(err => {
+                            debug.textContent += `\nAPI詳細エンドポイント: ❌ エラー\n`;
+                            debug.textContent += `エラー: ${err.message}\n`;
+                        });
+                }
+            })
+            .catch(err => {
+                document.getElementById('links').innerHTML = `<li style="color: red;">エラー: ${err.message}</li>`;
+                document.getElementById('debug').textContent = `エラー詳細: ${err.stack}`;
+            });
+    </script>
+</body>
+</html>

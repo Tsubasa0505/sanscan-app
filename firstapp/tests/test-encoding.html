@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字エンコーディングテスト</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 10px;
+        }
+        .test-group {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .error {
+            background: #fee;
+            color: #c00;
+        }
+        .success {
+            background: #efe;
+            color: #060;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 文字エンコーディングテスト</h1>
+        
+        <div class="test-group">
+            <h2>1. 日本語データの送信テスト</h2>
+            <button onclick="testJapanesePost()">日本語データを送信</button>
+            <button onclick="testEmojiPost()">絵文字入りデータを送信</button>
+            <button onclick="testMixedPost()">混在データを送信</button>
+        </div>
+
+        <div class="test-group">
+            <h2>2. データ取得テスト</h2>
+            <button onclick="testGetContacts()">連絡先リストを取得</button>
+            <button onclick="testGetStatistics()">統計データを取得</button>
+        </div>
+
+        <div class="test-group">
+            <h2>3. 特殊文字テスト</h2>
+            <button onclick="testSpecialChars()">特殊文字を送信</button>
+            <button onclick="testUnicodeChars()">Unicode文字を送信</button>
+        </div>
+
+        <div id="result" class="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3010/api';
+
+        function showResult(data, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = `result ${isError ? 'error' : 'success'}`;
+            resultDiv.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        }
+
+        async function testJapanesePost() {
+            try {
+                const testData = {
+                    fullName: "山田太郎",
+                    email: "yamada@example.com",
+                    phone: "090-1234-5678",
+                    companyName: "株式会社テスト",
+                    position: "営業部長",
+                    notes: "これは日本語のテストメモです。漢字、ひらがな、カタカナが含まれています。"
+                };
+
+                const response = await fetch(`${API_BASE}/contacts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                // 文字化けチェック
+                const isCorrect = result.fullName === testData.fullName && 
+                                 result.company?.name === testData.companyName;
+                
+                showResult({
+                    status: isCorrect ? '✅ 成功' : '❌ 文字化け検出',
+                    sent: testData,
+                    received: result
+                }, !isCorrect);
+            } catch (error) {
+                showResult(`エラー: ${error.message}`, true);
+            }
+        }
+
+        async function testEmojiPost() {
+            try {
+                const testData = {
+                    fullName: "絵文字太郎 😊",
+                    email: "emoji@test.jp",
+                    phone: "080-9999-8888",
+                    companyName: "🏢 絵文字株式会社",
+                    notes: "絵文字テスト 🎌 🗾 🍣 🍜 🌸"
+                };
+
+                const response = await fetch(`${API_BASE}/contacts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                const isCorrect = result.fullName === testData.fullName;
+                
+                showResult({
+                    status: isCorrect ? '✅ 成功' : '❌ 文字化け検出',
+                    sent: testData,
+                    received: result
+                }, !isCorrect);
+            } catch (error) {
+                showResult(`エラー: ${error.message}`, true);
+            }
+        }
+
+        async function testMixedPost() {
+            try {
+                const testData = {
+                    fullName: "John Smith ジョン・スミス",
+                    email: "john@example.com",
+                    phone: "03-1234-5678",
+                    companyName: "ABC商事 Ltd.",
+                    position: "CEO／最高経営責任者",
+                    notes: "English and 日本語 mixed テキスト"
+                };
+
+                const response = await fetch(`${API_BASE}/contacts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                const isCorrect = result.fullName === testData.fullName && 
+                                 result.company?.name === testData.companyName;
+                
+                showResult({
+                    status: isCorrect ? '✅ 成功' : '❌ 文字化け検出',
+                    sent: testData,
+                    received: result
+                }, !isCorrect);
+            } catch (error) {
+                showResult(`エラー: ${error.message}`, true);
+            }
+        }
+
+        async function testGetContacts() {
+            try {
+                const response = await fetch(`${API_BASE}/contacts?limit=5`);
+                const result = await response.json();
+                
+                // Content-Typeヘッダーをチェック
+                const contentType = response.headers.get('content-type');
+                const hasUTF8 = contentType && contentType.includes('utf-8');
+                
+                showResult({
+                    status: hasUTF8 ? '✅ UTF-8設定済み' : '⚠️ UTF-8未設定',
+                    contentType: contentType,
+                    dataCount: result.data?.length || 0,
+                    data: result.data
+                });
+            } catch (error) {
+                showResult(`エラー: ${error.message}`, true);
+            }
+        }
+
+        async function testGetStatistics() {
+            try {
+                const response = await fetch(`${API_BASE}/statistics`);
+                const result = await response.json();
+                
+                const contentType = response.headers.get('content-type');
+                const hasUTF8 = contentType && contentType.includes('utf-8');
+                
+                showResult({
+                    status: hasUTF8 ? '✅ UTF-8設定済み' : '⚠️ UTF-8未設定',
+                    contentType: contentType,
+                    overview: result.overview
+                });
+            } catch (error) {
+                showResult(`エラー: ${error.message}`, true);
+            }
+        }
+
+        async function testSpecialChars() {
+            try {
+                const testData = {
+                    fullName: "特殊文字テスト",
+                    email: "special@test.jp",
+                    notes: "特殊文字: ① ② ③ ㈱ ㊙ ㍻ ～ － ― 〜"
+                };
+
+                const response = await fetch(`${API_BASE}/contacts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                const isCorrect = result.notes && result.notes.includes("①");
+                
+                showResult({
+                    status: isCorrect ? '✅ 成功' : '❌ 文字化け検出',
+                    sent: testData,
+                    received: result
+                }, !isCorrect);
+            } catch (error) {
+                showResult(`エラー: ${error.message}`, true);
+            }
+        }
+
+        async function testUnicodeChars() {
+            try {
+                const testData = {
+                    fullName: "Unicode テスト",
+                    email: "unicode@test.jp",
+                    notes: "Unicodeテスト: 𠮷野家 𩸽 𪚥 🀄 🎴 🗾"
+                };
+
+                const response = await fetch(`${API_BASE}/contacts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                
+                const isCorrect = result.fullName === testData.fullName;
+                
+                showResult({
+                    status: isCorrect ? '✅ 成功' : '❌ 文字化け検出',
+                    sent: testData,
+                    received: result
+                }, !isCorrect);
+            } catch (error) {
+                showResult(`エラー: ${error.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>

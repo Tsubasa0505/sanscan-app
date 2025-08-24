@@ -1,0 +1,54 @@
+{
+  "name": "firstapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack --port 3010",
+    "build": "prisma generate && next build",
+    "start": "next start --port $PORT",
+    "lint": "next lint",
+    "postinstall": "prisma generate",
+    "check:claude": "node scripts/check-claude-md.js",
+    "check:all": "npm run lint || true && npm run check:claude",
+    "deploy:prepare": "node scripts/prepare-deploy.js",
+    "deploy:restore": "node scripts/restore-local.js",
+    "backup": "node scripts/db-backup.js",
+    "db:restore": "node scripts/db-restore.js"
+  },
+  "dependencies": {
+    "@google-cloud/vision": "^5.3.3",
+    "@prisma/client": "^6.13.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/ws": "^8.18.1",
+    "d3": "^7.9.0",
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^0.539.0",
+    "next": "15.4.6",
+    "nodemailer": "^7.0.5",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-force-graph-2d": "^1.28.0",
+    "recharts": "^3.1.2",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "sqlite3": "^5.1.7",
+    "tesseract.js": "^6.0.1",
+    "web-push": "^3.6.7",
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.6",
+    "prisma": "^6.13.0",
+    "tailwindcss": "^4",
+    "typescript": "5.9.2"
+  }
+}
