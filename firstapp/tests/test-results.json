@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-08-24T06:58:25.624Z",
+  "summary": {
+    "total": 7,
+    "passed": 2,
+    "failed": 5,
+    "passRate": 29
+  },
+  "tests": [
+    {
+      "name": "ホームページが正常に表示される",
+      "status": "FAIL",
+      "error": "page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3010/\", waiting until \"load\"\u001b[22m\n"
+    },
+    {
+      "name": "ダークモード切り替えが動作する",
+      "status": "FAIL",
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[title*=\"ダークモード\"], button[aria-label*=\"ダークモード\"]')\u001b[22m\n\u001b[2m    - locator resolved to <button title=\"ダークモードに切り替え\" aria-label=\"ダークモードに切り替え\" class=\"p-2 rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-gray-100 hover:bg-gray-200 text-gray-600 focus:ring-offset-white\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n"
+    },
+    {
+      "name": "連絡先ページに遷移できる",
+      "status": "FAIL",
+      "error": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('a[href=\"/contacts\"]')\u001b[22m\n\u001b[2m    - locator resolved to 6 elements. Proceeding with the first one: <a href=\"/contacts\" class=\"px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900\">…</a>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n"
+    },
+    {
+      "name": "新規連絡先フォームが表示される",
+      "status": "FAIL",
+      "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"新規追加\"), button:has-text(\"追加\"), button:has-text(\"Add\")').first()\u001b[22m\n"
+    },
+    {
+      "name": "フォームバリデーションが動作する",
+      "status": "FAIL",
+      "error": "page.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"fullName\"], input[placeholder*=\"氏名\"]')\u001b[22m\n"
+    },
+    {
+      "name": "基本検索機能が動作する",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "name": "モバイル表示が適切である",
+      "status": "PASS",
+      "error": null
+    }
+  ]
+}
