@@ -36,6 +36,8 @@ export default function ContactsPage() {
     position: '',
     notes: ''
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isProcessingOCR, setIsProcessingOCR] = useState(false);
 
   // 連絡先を取得
   const loadContacts = async () => {
@@ -50,6 +52,64 @@ export default function ContactsPage() {
       console.error('Error loading contacts:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // OCR処理
+  const handleOCR = async (file: File) => {
+    setIsProcessingOCR(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/ocr/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'OCR処理に失敗しました');
+      }
+
+      const result = await response.json();
+      showToast('success', '成功', '名刺情報を読み取りました');
+      
+      // OCRで取得した情報でフォームを更新
+      if (result.contact) {
+        setFormData({
+          fullName: result.contact.fullName || '',
+          email: result.contact.email || '',
+          phone: result.contact.phone || '',
+          company: result.contact.company?.name || '',
+          position: result.contact.position || '',
+          notes: result.contact.notes || ''
+        });
+      }
+      
+      // モーダルを閉じて、連絡先一覧を更新
+      setShowAddModal(false);
+      loadContacts();
+    } catch (error) {
+      showToast('error', 'エラー', `OCR処理に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('OCR error:', error);
+    } finally {
+      setIsProcessingOCR(false);
+      setSelectedFile(null);
+    }
+  };
+
+  // ファイル選択処理
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        showToast('error', 'エラー', '画像ファイルを選択してください');
+        return;
+      }
+      setSelectedFile(file);
+      // 自動的にOCR処理を開始
+      handleOCR(file);
     }
   };
 
@@ -81,6 +141,7 @@ export default function ContactsPage() {
         position: '',
         notes: ''
       });
+      setSelectedFile(null);
       loadContacts();
     } catch (error) {
       showToast('error', 'エラー', '連絡先の追加に失敗しました');
@@ -209,6 +270,45 @@ export default function ContactsPage() {
             <div className="p-6 space-y-6">
               <h2 className="text-2xl font-semibold leading-tight">新規連絡先</h2>
               
+              {/* OCR機能 - 名刺アップロード */}
+              <div className={`p-4 rounded-xl border-2 border-dashed transition-colors ${
+                isDarkMode 
+                  ? 'border-gray-700 hover:border-purple-500/50 bg-gray-900/30' 
+                  : 'border-gray-300 hover:border-purple-400/50 bg-gray-50/50'
+              }`}>
+                <label htmlFor="file-upload" className="cursor-pointer block">
+                  <div className="text-center">
+                    <div className="text-4xl mb-2">📷</div>
+                    <p className={`text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                      名刺画像をアップロード
+                    </p>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      クリックして選択 または ドラッグ&ドロップ
+                    </p>
+                    {selectedFile && (
+                      <p className="text-xs text-purple-600 mt-2">
+                        選択中: {selectedFile.name}
+                      </p>
+                    )}
+                    {isProcessingOCR && (
+                      <p className="text-xs text-blue-600 mt-2 animate-pulse">
+                        処理中... 名刺情報を読み取っています
+                      </p>
+                    )}
+                  </div>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    disabled={isProcessingOCR}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              <div className={`h-px ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`} />
+              
               <form onSubmit={handleAddContact} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium mb-2">
@@ -300,7 +400,18 @@ export default function ContactsPage() {
                 <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setSelectedFile(null);
+                      setFormData({
+                        fullName: '',
+                        email: '',
+                        phone: '',
+                        company: '',
+                        position: '',
+                        notes: ''
+                      });
+                    }}
                     className={`h-11 px-5 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 ${
                       isDarkMode 
                         ? 'bg-transparent border border-gray-700 hover:bg-gray-800 text-gray-300' 
